@@ -46,8 +46,7 @@ void ABaseCharacter::BeginPlay()
 		FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
 		FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(DefaultBasicAttributes, 1, EffectContext);
 		if (SpecHandle.IsValid())
-		{
-			
+		{			
 			SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.DefaultBasicAttributes.Health"), DefaultHealthAttribute);
 			SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.DefaultBasicAttributes.MaxHealth"), DefaultMaxHealthAttribute);
 			SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.DefaultBasicAttributes.Mana"), DefaultManaAttribute);

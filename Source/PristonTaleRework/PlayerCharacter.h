@@ -23,6 +23,33 @@ private:
 	/** Camera boom positioning the camera above the character */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	class USpringArmComponent* CameraBoom;
+	
+public: 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitiesSystem")
+	class UStatsAttributeSet* StatsAttributeSet;
+
+protected:
+	// Gameplay Effect that converts Stats → Atributos
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Effects")
+	TSubclassOf<class UGameplayEffect> StatsToAttributesEffect;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Stats")
+	int32 InitialStrength = 1;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Stats")
+	int32 InitialIntelligence = 1;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Stats")
+	int32 InitialVitality = 1;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Stats")
+	int32 InitialAgility = 1;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Stats")
+	int32 InitialLevel = 1;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Stats")
+	int32 PointsPerLevel = 5;
 
 public:
 
@@ -34,6 +61,15 @@ public:
 
 	/** Update */
 	virtual void Tick(float DeltaSeconds) override;
+
+	UFUNCTION(BlueprintCallable, Category = "Stats")
+	void LevelUp();
+
+	UFUNCTION(BlueprintCallable, Category = "Stats")
+	bool AddStatPoint(FGameplayTag StatTag, int32 Amount = 1);
+
+	UFUNCTION(BlueprintPure, Category = "Stats")
+	float GetAvailableStatPoints() const;
 
 	/** Returns the camera component **/
 	FORCEINLINE class UCameraComponent* GetTopDownCameraComponent() const { return TopDownCameraComponent; }
