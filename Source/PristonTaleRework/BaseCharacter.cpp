@@ -4,6 +4,7 @@
 #include "BaseCharacter.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GAS/AttributesSets/BasicAttributeSet.h"
 
 // Sets default values
 ABaseCharacter::ABaseCharacter()
@@ -30,13 +31,34 @@ ABaseCharacter::ABaseCharacter()
 	GetCharacterMovement()->bConstrainToPlane = true;
 	GetCharacterMovement()->bSnapToPlaneAtStart = true;
 
+	//Add the basic attribute set
+	BasicAttributeSet = CreateDefaultSubobject<UBasicAttributeSet>(TEXT("BasicAttributeeSet"));
+
 }
 
 // Called when the game starts or when spawned
 void ABaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
+	if (AbilitySystemComponent && DefaultBasicAttributes)
+	{
+		FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
+		FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(DefaultBasicAttributes, 1, EffectContext);
+		if (SpecHandle.IsValid())
+		{
+			
+			SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.DefaultBasicAttributes.Health"), DefaultHealthAttribute);
+			SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.DefaultBasicAttributes.MaxHealth"), DefaultMaxHealthAttribute);
+			SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.DefaultBasicAttributes.Mana"), DefaultManaAttribute);
+			SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.DefaultBasicAttributes.MaxMana"), DefaultMaxManaAttribute);
+			SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.DefaultBasicAttributes.MinPowerAttack"), DefaultMinPowerAttack);
+			SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.DefaultBasicAttributes.MaxPowerAttack"), DefaultMaxPowerAttack);
+			SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.DefaultBasicAttributes.Defense"), DefaultDefense);
+			SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.DefaultBasicAttributes.DefenseRate"), DefaultDefenseRate);
+			AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+		}
+	}
 }
 
 // Called every frame

@@ -19,11 +19,37 @@ public:
 
 	// Ability System Component
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitiesSystem")
-	class UAbilitySystemComponent* AbilitySystemComponent;
+	UAbilitySystemComponent* AbilitySystemComponent;
+
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitiesSystem")
+	class UBasicAttributeSet* BasicAttributeSet;
 
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AbilitiesSystem")
 	EGameplayEffectReplicationMode AscReplicationMode = EGameplayEffectReplicationMode::Mixed;
+
+	// Default health attribute to apply to the character
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DefaultBasicAttributes")
+	TSubclassOf<class UGameplayEffect> DefaultBasicAttributes;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DefaultBasicAttributes")
+	float DefaultHealthAttribute = 100.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DefaultBasicAttributes")
+	float DefaultMaxHealthAttribute = 100.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DefaultBasicAttributes")
+	float DefaultManaAttribute = 100.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DefaultBasicAttributes")
+	float DefaultMaxManaAttribute = 100.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DefaultBasicAttributes")
+	float DefaultMinPowerAttack = 2.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DefaultBasicAttributes")
+	float DefaultMaxPowerAttack = 10.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DefaultBasicAttributes")
+	float DefaultDefense = 2.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DefaultBasicAttributes")
+	float DefaultDefenseRate = 0.3f;	
+	
+	
 
 protected:
 	// Called when the game starts or when spawned
