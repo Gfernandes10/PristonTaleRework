@@ -30,23 +30,23 @@ protected:
 	EGameplayEffectReplicationMode AscReplicationMode = EGameplayEffectReplicationMode::Mixed;
 
 	// Default health attribute to apply to the character
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DefaultBasicAttributes")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAS|DefaultBasicAttributes")
 	TSubclassOf<class UGameplayEffect> DefaultBasicAttributes;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DefaultBasicAttributes")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAS|DefaultBasicAttributes")
 	float DefaultHealthAttribute = 100.f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DefaultBasicAttributes")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAS|DefaultBasicAttributes")
 	float DefaultMaxHealthAttribute = 100.f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DefaultBasicAttributes")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAS|DefaultBasicAttributes")
 	float DefaultManaAttribute = 100.f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DefaultBasicAttributes")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAS|DefaultBasicAttributes")
 	float DefaultMaxManaAttribute = 100.f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DefaultBasicAttributes")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAS|DefaultBasicAttributes")
 	float DefaultMinPowerAttack = 2.f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DefaultBasicAttributes")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAS|DefaultBasicAttributes")
 	float DefaultMaxPowerAttack = 10.f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DefaultBasicAttributes")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAS|DefaultBasicAttributes")
 	float DefaultDefense = 2.f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DefaultBasicAttributes")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAS|DefaultBasicAttributes")
 	float DefaultDefenseRate = 0.3f;	
 	
 	

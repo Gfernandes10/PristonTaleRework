@@ -3,6 +3,8 @@
 
 #include "BasicAttributeSet.h"
 #include "Net/UnrealNetwork.h"
+#include "GameplayEffectExtension.h"
+#include "AbilitySystemComponent.h"
 
 UBasicAttributeSet::UBasicAttributeSet()
 {
@@ -29,3 +31,79 @@ void UBasicAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 	DOREPLIFETIME_CONDITION_NOTIFY(UBasicAttributeSet, DefenseRate, COND_None, REPNOTIFY_Always);
 }
 
+void UBasicAttributeSet::ManageRegenTag(UAbilitySystemComponent* ASC, const FGameplayTag& Tag, bool bShouldHaveTag)
+{
+    if (!ASC) return;
+
+    const bool bHasTag = ASC->HasMatchingGameplayTag(Tag);
+
+    if (bShouldHaveTag && !bHasTag)
+    {
+        ASC->AddLooseGameplayTag(Tag);
+    }
+    else if (!bShouldHaveTag && bHasTag)
+    {
+        ASC->RemoveLooseGameplayTag(Tag);
+    }
+}
+
+void UBasicAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
+{
+	Super::PreAttributeChange(Attribute, NewValue);
+}
+
+void UBasicAttributeSet::PostAttributeChange(const FGameplayAttribute& Attribute, float OldValue, float NewValue)
+{
+    Super::PostAttributeChange(Attribute, OldValue, NewValue);
+
+    if (Attribute == GetMaxHealthAttribute())
+    {
+        const float HealthPercentage = (NewValue > 0.0f)
+            ? GetHealth() / NewValue
+            : 1.0f;
+
+        float NewHealth = FMath::Clamp(NewValue * HealthPercentage, 0.0f, NewValue);
+        Health.SetBaseValue(NewHealth);
+        Health.SetCurrentValue(NewHealth);
+
+        UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent();
+        static const FGameplayTag Tag = FGameplayTag::RequestGameplayTag(FName("Character.State.Regen.HP"));
+        ManageRegenTag(ASC, Tag, NewHealth < NewValue);
+    }
+    else if (Attribute == GetMaxManaAttribute())
+    {
+        const float ManaPercentage = (OldValue > 0.0f)
+            ? GetMana() / OldValue
+            : 1.0f;
+
+        float NewMana = FMath::Clamp(NewValue * ManaPercentage, 0.0f, NewValue);
+        Mana.SetBaseValue(NewMana);
+        Mana.SetCurrentValue(NewMana);
+
+        UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent();
+        static const FGameplayTag Tag = FGameplayTag::RequestGameplayTag(FName("Character.State.Regen.MP"));
+        ManageRegenTag(ASC, Tag, NewMana < NewValue);
+    }
+}
+
+void UBasicAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
+{
+    Super::PostGameplayEffectExecute(Data);
+
+    UAbilitySystemComponent* ASC = Data.Target.AbilityActorInfo->AbilitySystemComponent.Get();
+    if (!ASC) return;
+
+    static const FGameplayTag NeedsHealthRegenTag = FGameplayTag::RequestGameplayTag(FName("Character.State.Regen.HP"));
+    static const FGameplayTag NeedsManaRegenTag = FGameplayTag::RequestGameplayTag(FName("Character.State.Regen.MP"));
+
+    if (Data.EvaluatedData.Attribute == GetHealthAttribute())
+    {
+        SetHealth(FMath::Clamp(GetHealth(), 0.0f, GetMaxHealth()));
+        ManageRegenTag(ASC, NeedsHealthRegenTag, GetHealth() < GetMaxHealth());
+    }
+    else if (Data.EvaluatedData.Attribute == GetManaAttribute())
+    {
+        SetMana(FMath::Clamp(GetMana(), 0.0f, GetMaxMana()));
+        ManageRegenTag(ASC, NeedsManaRegenTag, GetMana() < GetMaxMana());
+    }
+}

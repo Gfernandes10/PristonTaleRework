@@ -14,40 +14,42 @@ UCLASS()
 class PRISTONTALEREWORK_API UBasicAttributeSet : public UAttributeSet
 {
 	GENERATED_BODY()
-
+private:
+	float OldMaxHealth = 0.0f;
+	float OldMaxMana = 0.0f;
 public:
 
 	UBasicAttributeSet();
 	
-	UPROPERTY(BlueprintReadOnly, Category="Attributes", ReplicatedUsing=OnRep_Health)
+	UPROPERTY(BlueprintReadOnly, Category="GAS|Attributes", ReplicatedUsing=OnRep_Health)
 	FGameplayAttributeData Health;
 	ATTRIBUTE_ACCESSORS_BASIC(UBasicAttributeSet, Health);
 	
-	UPROPERTY(BlueprintReadOnly, Category="Attributes", ReplicatedUsing=OnRep_MaxHealth)
+	UPROPERTY(BlueprintReadOnly, Category="GAS|Attributes", ReplicatedUsing=OnRep_MaxHealth)
 	FGameplayAttributeData MaxHealth;
 	ATTRIBUTE_ACCESSORS_BASIC(UBasicAttributeSet, MaxHealth);
 	
-	UPROPERTY(BlueprintReadOnly, Category="Attributes", ReplicatedUsing=OnRep_Mana)
+	UPROPERTY(BlueprintReadOnly, Category="GAS|Attributes", ReplicatedUsing=OnRep_Mana)
 	FGameplayAttributeData Mana;
 	ATTRIBUTE_ACCESSORS_BASIC(UBasicAttributeSet, Mana);
 	
-	UPROPERTY(BlueprintReadOnly, Category="Attributes", ReplicatedUsing=OnRep_MaxMana)
+	UPROPERTY(BlueprintReadOnly, Category="GAS|Attributes", ReplicatedUsing=OnRep_MaxMana)
 	FGameplayAttributeData MaxMana;
 	ATTRIBUTE_ACCESSORS_BASIC(UBasicAttributeSet, MaxMana);
 	
-	UPROPERTY(BlueprintReadOnly, Category="Attributes", ReplicatedUsing=OnRep_MinPowerAttackk)
+	UPROPERTY(BlueprintReadOnly, Category="GAS|Attributes", ReplicatedUsing=OnRep_MinPowerAttackk)
 	FGameplayAttributeData MinPowerAttack;
 	ATTRIBUTE_ACCESSORS_BASIC(UBasicAttributeSet, MinPowerAttack);
 	
-	UPROPERTY(BlueprintReadOnly, Category="Attributes", ReplicatedUsing=OnRep_MaxPowerAttack)
+	UPROPERTY(BlueprintReadOnly, Category="GAS|Attributes", ReplicatedUsing=OnRep_MaxPowerAttack)
 	FGameplayAttributeData MaxPowerAttack;
 	ATTRIBUTE_ACCESSORS_BASIC(UBasicAttributeSet, MaxPowerAttack);
 	
-	UPROPERTY(BlueprintReadOnly, Category="Attributes", ReplicatedUsing=OnRep_Defense)
+	UPROPERTY(BlueprintReadOnly, Category="GAS|Attributes", ReplicatedUsing=OnRep_Defense)
 	FGameplayAttributeData Defense;
 	ATTRIBUTE_ACCESSORS_BASIC(UBasicAttributeSet, Defense);
 	
-	UPROPERTY(BlueprintReadOnly, Category="Attributes", ReplicatedUsing=OnRep_DefenseRate)
+	UPROPERTY(BlueprintReadOnly, Category="GAS|Attributes", ReplicatedUsing=OnRep_DefenseRate)
 	FGameplayAttributeData DefenseRate;
 	ATTRIBUTE_ACCESSORS_BASIC(UBasicAttributeSet, DefenseRate);
 
@@ -94,5 +96,16 @@ public:
 	}
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;
+
+	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
+
+	virtual void PostAttributeChange(const FGameplayAttribute& Attribute, float OldValue, float NewValue) override;
+	
+
+private:
+        void ManageRegenTag(UAbilitySystemComponent* ASC, const FGameplayTag& Tag, bool bShouldHaveTag);
+	
 	
 };
