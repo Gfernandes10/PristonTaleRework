@@ -63,26 +63,24 @@ void UBasicAttributeSet::PostAttributeChange(const FGameplayAttribute& Attribute
             : 1.0f;
 
         float NewHealth = FMath::Clamp(NewValue * HealthPercentage, 0.0f, NewValue);
-        Health.SetBaseValue(NewHealth);
-        Health.SetCurrentValue(NewHealth);
+    	SetHealth(NewHealth);
 
         UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent();
-        static const FGameplayTag Tag = FGameplayTag::RequestGameplayTag(FName("Character.State.Regen.HP"));
-        ManageRegenTag(ASC, Tag, NewHealth < NewValue);
+        static const FGameplayTag HealthTag = FGameplayTag::RequestGameplayTag(FName("Character.State.Regen.Health"));
+        ManageRegenTag(ASC, HealthTag, GetHealth() < NewValue);
     }
     else if (Attribute == GetMaxManaAttribute())
     {
-        const float ManaPercentage = (OldValue > 0.0f)
-            ? GetMana() / OldValue
+        const float ManaPercentage = (NewValue > 0.0f)
+            ? GetMana() / NewValue
             : 1.0f;
 
         float NewMana = FMath::Clamp(NewValue * ManaPercentage, 0.0f, NewValue);
-        Mana.SetBaseValue(NewMana);
-        Mana.SetCurrentValue(NewMana);
+    	SetMana(NewMana);
 
         UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent();
-        static const FGameplayTag Tag = FGameplayTag::RequestGameplayTag(FName("Character.State.Regen.MP"));
-        ManageRegenTag(ASC, Tag, NewMana < NewValue);
+        static const FGameplayTag ManaTag = FGameplayTag::RequestGameplayTag(FName("Character.State.Regen.Mana"));
+        ManageRegenTag(ASC, ManaTag, GetMana() < NewValue);
     }
 }
 
@@ -93,17 +91,17 @@ void UBasicAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
     UAbilitySystemComponent* ASC = Data.Target.AbilityActorInfo->AbilitySystemComponent.Get();
     if (!ASC) return;
 
-    static const FGameplayTag NeedsHealthRegenTag = FGameplayTag::RequestGameplayTag(FName("Character.State.Regen.HP"));
-    static const FGameplayTag NeedsManaRegenTag = FGameplayTag::RequestGameplayTag(FName("Character.State.Regen.MP"));
+    static const FGameplayTag NeedsHealthRegenTag = FGameplayTag::RequestGameplayTag(FName("Character.State.Regen.Health"));
+    static const FGameplayTag NeedsManaRegenTag = FGameplayTag::RequestGameplayTag(FName("Character.State.Regen.Mana"));
 
     if (Data.EvaluatedData.Attribute == GetHealthAttribute())
     {
-        SetHealth(FMath::Clamp(GetHealth(), 0.0f, GetMaxHealth()));
+        // SetHealth(FMath::Clamp(GetHealth(), 0.0f, GetMaxHealth()));
         ManageRegenTag(ASC, NeedsHealthRegenTag, GetHealth() < GetMaxHealth());
     }
     else if (Data.EvaluatedData.Attribute == GetManaAttribute())
     {
-        SetMana(FMath::Clamp(GetMana(), 0.0f, GetMaxMana()));
+        // SetMana(FMath::Clamp(GetMana(), 0.0f, GetMaxMana()));
         ManageRegenTag(ASC, NeedsManaRegenTag, GetMana() < GetMaxMana());
     }
 }

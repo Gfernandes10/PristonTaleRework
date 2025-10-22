@@ -3,6 +3,9 @@
 
 #include "StatsAttributeSet.h"
 #include "Net/UnrealNetwork.h"
+#include "GameplayEffectExtension.h"
+#include "AbilitySystemComponent.h"
+#include "PlayerCharacter.h"
 
 UStatsAttributeSet::UStatsAttributeSet()
 {
@@ -23,4 +26,27 @@ void UStatsAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 	DOREPLIFETIME_CONDITION_NOTIFY(UStatsAttributeSet, Agility, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UStatsAttributeSet, AvailableStatPoints, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UStatsAttributeSet, Level, COND_None, REPNOTIFY_Always);
+}
+
+void UStatsAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
+{
+	Super::PostGameplayEffectExecute(Data);
+
+	if (!Data.Target.AbilityActorInfo.IsValid()) return;
+
+	const FGameplayAttribute& Attr = Data.EvaluatedData.Attribute;
+	UAbilitySystemComponent* ASC = Data.Target.AbilityActorInfo->AbilitySystemComponent.Get();
+	if (!ASC) return;
+	
+	if (Attr == GetVitalityAttribute())
+	{
+		AActor* OwnerActor = Data.Target.AbilityActorInfo->OwnerActor.Get();
+		if (!OwnerActor) return;
+
+		APlayerCharacter* Player = Cast<APlayerCharacter>(OwnerActor);
+		// if (Player)
+		// {
+		// 	Player->UpdateBasicAttributesBaseOnStats();
+		// }
+	}
 }

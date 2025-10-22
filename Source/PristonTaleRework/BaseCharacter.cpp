@@ -36,21 +36,18 @@ ABaseCharacter::ABaseCharacter()
 
 }
 
-// Called when the game starts or when spawned
-void ABaseCharacter::BeginPlay()
+void ABaseCharacter::InitializeDefaultBasicAttributes()
 {
-	Super::BeginPlay();
-
 	if (AbilitySystemComponent && DefaultBasicAttributes)
 	{
 		FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
 		FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(DefaultBasicAttributes, 1, EffectContext);
 		if (SpecHandle.IsValid())
 		{			
-			SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.DefaultBasicAttributes.Health"), DefaultHealthAttribute);
 			SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.DefaultBasicAttributes.MaxHealth"), DefaultMaxHealthAttribute);
-			SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.DefaultBasicAttributes.Mana"), DefaultManaAttribute);
 			SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.DefaultBasicAttributes.MaxMana"), DefaultMaxManaAttribute);
+			SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.DefaultBasicAttributes.Health"), DefaultHealthAttribute);
+			SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.DefaultBasicAttributes.Mana"), DefaultManaAttribute);
 			SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.DefaultBasicAttributes.MinPowerAttack"), DefaultMinPowerAttack);
 			SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.DefaultBasicAttributes.MaxPowerAttack"), DefaultMaxPowerAttack);
 			SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.DefaultBasicAttributes.Defense"), DefaultDefense);
@@ -58,6 +55,14 @@ void ABaseCharacter::BeginPlay()
 			AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 		}
 	}
+}
+
+// Called when the game starts or when spawned
+void ABaseCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	InitializeDefaultBasicAttributes();
 }
 
 // Called every frame

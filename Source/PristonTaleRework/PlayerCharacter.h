@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "BaseCharacter.h"
+#include "Tables/EGameSaveSlots.h"
 #include "PlayerCharacter.generated.h"
 
 /**
@@ -31,8 +32,11 @@ public:
 protected:
 	// Gameplay Effect that converts Stats → Atributos
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Effects")
-	TSubclassOf<class UGameplayEffect> StatsToAttributesEffect;
+	TSubclassOf<UGameplayEffect> StatsToAttributesEffect;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Effects")
+	TMap<FGameplayTag, TSubclassOf<UGameplayEffect>> StatPointChangeEffects;
+	
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Effects")
 	TSubclassOf<UGameplayEffect> HealthManaRegenEffect;
 
@@ -54,14 +58,17 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Stats")
 	int32 PointsPerLevel = 5;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SaveGame")
-	FString SaveSlotName = TEXT("PlayerSlot");
+	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SaveGame")
+	// FString SaveSlotName = TEXT("PlayerSlot");
 
 	UPROPERTY(EditDefaultsOnly, Category = "Experience")
 	UDataTable* ExperienceTable;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Experience")
 	int32 CurrentExperience = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Save System")
+	EGameSaveSlots CurrentSaveSlot = EGameSaveSlots::SlotA;
 	
 public:
 
@@ -94,19 +101,19 @@ public:
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 
 	UFUNCTION(BlueprintCallable, Category = "SaveGame")
-	void SaveGame(FString SlotName);
+	void SaveGame(EGameSaveSlots Slot);
 
 	UFUNCTION(BlueprintCallable, Category = "SaveGame")
-	void LoadGame(FString SlotName);
+	void LoadGame(EGameSaveSlots Slot);
 
 	UFUNCTION(BlueprintPure, Category = "SaveGame")
-	bool DoesSaveGameExist() const;
+	bool DoesSaveGameExist(EGameSaveSlots Slot) const;
 
 	UFUNCTION(BlueprintCallable, Category = "SaveGame")
-	void DeleteSaveGame(FString SlotName);
+	void DeleteSaveGame(EGameSaveSlots Slot);
 
 	UFUNCTION(BlueprintCallable, Category = "SaveGame")
-	void DeleteSaveGameAndReset(FString SlotName);
+	void DeleteSaveGameAndReset(EGameSaveSlots Slot);
 
 	UFUNCTION(BlueprintCallable, Category = "Experience")
 	void AddExperience(int32 Amount);
@@ -119,5 +126,7 @@ public:
 
 private:
 	FActiveGameplayEffectHandle RegenEffectHandle;
+
+	FString GetSlotNameFromEnum(EGameSaveSlots Slot) const;
 	
 };

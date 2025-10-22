@@ -16,6 +16,8 @@ class PRISTONTALEREWORK_API ABaseCharacter : public ACharacter, public IAbilityS
 public:
 	// Sets default values for this character's properties
 	ABaseCharacter();
+	
+	
 
 	// Ability System Component
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitiesSystem")
@@ -58,6 +60,8 @@ protected:
 	virtual void PossessedBy(AController* NewController) override;
 
 	virtual void OnRep_PlayerState() override;
+
+	void InitializeDefaultBasicAttributes();
 
 public:	
 	// Called every frame

@@ -40,18 +40,29 @@ APlayerCharacter::APlayerCharacter()
 
 void APlayerCharacter::UpdateBasicAttributesBaseOnStats()
 {
-	if (AbilitySystemComponent && StatsToAttributesEffect)
-	{
-		FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
-		EffectContext.AddSourceObject(this);
-            
-		FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(
-			StatsToAttributesEffect, 1.0f, EffectContext);
+	if (!AbilitySystemComponent || !StatsAttributeSet) return;
 
-		if (SpecHandle.IsValid())
-		{
-			AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
-		}
+	for (const TPair<FGameplayTag, TSubclassOf<UGameplayEffect>>& Pair : StatPointChangeEffects)
+	{
+		const FGameplayTag& StatTag = Pair.Key;
+		TSubclassOf<UGameplayEffect> EffectClass = Pair.Value;
+
+		if (!EffectClass) continue;
+		
+		float StatValue = 0.0f;
+        
+		if (StatTag.MatchesTagExact(FGameplayTag::RequestGameplayTag("Data.Stats.Strength")))
+			StatValue = StatsAttributeSet->GetStrength();
+		else if (StatTag.MatchesTagExact(FGameplayTag::RequestGameplayTag("Data.Stats.Intelligence")))
+			StatValue = StatsAttributeSet->GetIntelligence();
+		else if (StatTag.MatchesTagExact(FGameplayTag::RequestGameplayTag("Data.Stats.Vitality")))
+			StatValue = StatsAttributeSet->GetVitality();
+		else if (StatTag.MatchesTagExact(FGameplayTag::RequestGameplayTag("Data.Stats.Agility")))
+			StatValue = StatsAttributeSet->GetAgility();
+		else
+			continue;
+
+		AddStatPoint(StatTag,StatValue);
 	}
 }
 
@@ -61,9 +72,9 @@ void APlayerCharacter::BeginPlay()
 
 	if (AbilitySystemComponent && StatsAttributeSet)
 	{
-		if (DoesSaveGameExist())
+		if (DoesSaveGameExist(CurrentSaveSlot))
 		{
-			LoadGame(SaveSlotName);
+			LoadGame(CurrentSaveSlot);
 		}
 		else
 		{
@@ -77,8 +88,9 @@ void APlayerCharacter::BeginPlay()
 				UStatsAttributeSet::GetAgilityAttribute(), InitialAgility);
 			AbilitySystemComponent->SetNumericAttributeBase(
 				UStatsAttributeSet::GetLevelAttribute(), InitialLevel);			
-			UpdateBasicAttributesBaseOnStats();
-		}		
+			//UpdateBasicAttributesBaseOnStats();
+		}	
+
 	}
 
 	// Add Tags if needs Health/Mana Regen
@@ -139,7 +151,7 @@ void APlayerCharacter::LevelUp()
     UE_LOG(LogTemp, Log, TEXT("Level Up! New Level: %.0f | Available Stats Points: %.0f"), 
         CurrentLevel + 1.0f, CurrentPoints + PointsPerLevel);
 
-	SaveGame(SaveSlotName);
+	SaveGame(CurrentSaveSlot);
 }
 
 bool APlayerCharacter::AddStatPoint(FGameplayTag StatTag, int32 Amount)
@@ -147,11 +159,43 @@ bool APlayerCharacter::AddStatPoint(FGameplayTag StatTag, int32 Amount)
     if (!AbilitySystemComponent || !StatsAttributeSet || Amount <= 0) 
         return false;
 
-    const float AvailablePoints = StatsAttributeSet->GetAvailableStatPoints();
-    if (AvailablePoints < Amount) 
-        return false;
+	const float AvailablePoints = StatsAttributeSet->GetAvailableStatPoints();
+	if (AvailablePoints < Amount)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Not enough stat points available. Required: %d, Available: %.0f"),
+			Amount, AvailablePoints);
+		return false;
+	}
 
-    // Identify which attribute to modify
+	TSubclassOf<UGameplayEffect>* EffectClass = StatPointChangeEffects.Find(StatTag);
+	if (!EffectClass || !(*EffectClass))
+	{
+		UE_LOG(LogTemp, Error, TEXT("No GameplayEffect found for StatTag: %s"), *StatTag.ToString());
+		return false;
+	}
+
+	FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
+	EffectContext.AddSourceObject(this);
+	FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(
+		*EffectClass, 1.0f, EffectContext);
+
+	if (!SpecHandle.IsValid())
+	{
+		UE_LOG(LogTemp, Error, TEXT("Failed to create GameplayEffect spec"));
+		return false;
+	}
+
+	SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag(FName("Data.Stats.ChangeAmount")), (float)Amount);
+	SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag(FName("Data.Stats.AvailableStatPoints")),-(float)Amount);
+	
+	AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+	
+	UE_LOG(LogTemp, Log, TEXT("Added %d point(s) to %s via GameplayEffect"), Amount, *StatTag.ToString());
+
+	SaveGame(CurrentSaveSlot);
+	return true;
+	
+    /*// Identify which attribute to modify
     FGameplayAttribute AttributeToModify;
     
     if (StatTag.MatchesTagExact(FGameplayTag::RequestGameplayTag("Data.Stats.Strength")))
@@ -178,7 +222,7 @@ bool APlayerCharacter::AddStatPoint(FGameplayTag StatTag, int32 Amount)
 
 	SaveGame(SaveSlotName);
 	
-    return true;
+    return true;*/
 }
 
 float APlayerCharacter::GetAvailableStatPoints() const
@@ -186,8 +230,10 @@ float APlayerCharacter::GetAvailableStatPoints() const
     return StatsAttributeSet ? StatsAttributeSet->GetAvailableStatPoints() : 0.0f;
 }
 
-void APlayerCharacter::SaveGame(FString SlotName)
+void APlayerCharacter::SaveGame(EGameSaveSlots Slot)
 {
+	FString SlotName = GetSlotNameFromEnum(Slot);
+	
 	if (!StatsAttributeSet) return;
 
 	UPlayerSaveGame* SaveGameInstance = Cast<UPlayerSaveGame>(
@@ -201,7 +247,7 @@ void APlayerCharacter::SaveGame(FString SlotName)
 		SaveGameInstance->Vitality = FMath::RoundToInt(StatsAttributeSet->GetVitality());
 		SaveGameInstance->Agility = FMath::RoundToInt(StatsAttributeSet->GetAgility());
 		SaveGameInstance->Level = FMath::RoundToInt(StatsAttributeSet->GetLevel());
-		SaveGameInstance->AvailableStatPoints = FMath::RoundToInt(StatsAttributeSet->GetAvailableStatPoints());
+		SaveGameInstance->AvailableStatPoints = FMath::RoundToInt(StatsAttributeSet->GetAvailableStatPoints());		
 		
 		// Save Experience
 		SaveGameInstance->CurrentExperience = CurrentExperience;
@@ -222,8 +268,11 @@ void APlayerCharacter::SaveGame(FString SlotName)
 	}
 }
 
-void APlayerCharacter::LoadGame(FString SlotName)
+void APlayerCharacter::LoadGame(EGameSaveSlots Slot)
 {
+	FString SlotName = GetSlotNameFromEnum(Slot);
+	CurrentSaveSlot = Slot;
+	
 	if (!AbilitySystemComponent || !StatsAttributeSet) return;
 
 	UPlayerSaveGame* LoadGameInstance = Cast<UPlayerSaveGame>(
@@ -249,6 +298,9 @@ void APlayerCharacter::LoadGame(FString SlotName)
 			UStatsAttributeSet::GetLevelAttribute(), LoadGameInstance->Level);
 		AbilitySystemComponent->SetNumericAttributeBase(
 			UStatsAttributeSet::GetAvailableStatPointsAttribute(), LoadGameInstance->AvailableStatPoints);
+
+		// Calculate Basic Attributes based on Stats
+		UpdateBasicAttributesBaseOnStats();
 		
 		// Load Experience
 		CurrentExperience = LoadGameInstance->CurrentExperience;
@@ -258,7 +310,7 @@ void APlayerCharacter::LoadGame(FString SlotName)
 		SetActorRotation(LoadGameInstance->PlayerRotation);
 
 		// Update Basic Attributes based on Stats
-		UpdateBasicAttributesBaseOnStats();
+		
 
 		UE_LOG(LogTemp, Log, TEXT("Game loaded successfully!"));
 	}
@@ -267,13 +319,17 @@ void APlayerCharacter::LoadGame(FString SlotName)
 		UE_LOG(LogTemp, Error, TEXT("Failed to load game!"));
 	}
 }
-bool APlayerCharacter::DoesSaveGameExist() const
+bool APlayerCharacter::DoesSaveGameExist(EGameSaveSlots Slot) const
 {
-	return UGameplayStatics::DoesSaveGameExist(SaveSlotName, 0);
+	
+	FString SlotName = GetSlotNameFromEnum(Slot);
+	return UGameplayStatics::DoesSaveGameExist(SlotName, 0);
 }
 
-void APlayerCharacter::DeleteSaveGame(FString SlotName)
+void APlayerCharacter::DeleteSaveGame(EGameSaveSlots Slot)
 {
+	FString SlotName = GetSlotNameFromEnum(Slot);
+	
     if (UGameplayStatics::DoesSaveGameExist(SlotName, 0))
     {
         if (UGameplayStatics::DeleteGameInSlot(SlotName, 0))
@@ -291,11 +347,12 @@ void APlayerCharacter::DeleteSaveGame(FString SlotName)
     }
 }
 
-void APlayerCharacter::DeleteSaveGameAndReset(FString SlotName)
+void APlayerCharacter::DeleteSaveGameAndReset(EGameSaveSlots Slot)
 {
-    DeleteSaveGame(SlotName);
-    
-    // Reset para valores iniciais
+	FString SlotName = GetSlotNameFromEnum(Slot);
+	
+    DeleteSaveGame(Slot);
+	
     if (AbilitySystemComponent && StatsAttributeSet)
     {
         AbilitySystemComponent->SetNumericAttributeBase(UStatsAttributeSet::GetStrengthAttribute(), InitialStrength);
@@ -307,7 +364,7 @@ void APlayerCharacter::DeleteSaveGameAndReset(FString SlotName)
         
         CurrentExperience = 0;
         
-        UpdateBasicAttributesBaseOnStats();
+        InitializeDefaultBasicAttributes();
     }
 }
 
@@ -326,7 +383,7 @@ void APlayerCharacter::AddExperience(int32 Amount)
 		RequiredXP = GetExperienceForNextLevel();
 	}
 
-	SaveGame(SaveSlotName);
+	SaveGame(CurrentSaveSlot);
 }
 
 int32 APlayerCharacter::GetExperienceForNextLevel() const
@@ -347,4 +404,15 @@ float APlayerCharacter::GetExperienceProgress() const
 {
 	int32 RequiredXP = GetExperienceForNextLevel();
 	return RequiredXP > 0 ? (float)CurrentExperience / RequiredXP : 0.0f;
+}
+
+FString APlayerCharacter::GetSlotNameFromEnum(EGameSaveSlots Slot) const
+{
+	switch (Slot)
+	{
+	case EGameSaveSlots::SlotA: return TEXT("GameSlotA");
+	case EGameSaveSlots::SlotB: return TEXT("GameSlotB");
+	case EGameSaveSlots::SlotC: return TEXT("GameSlotC");
+	default: return TEXT("GameSlotA");
+	}
 }
