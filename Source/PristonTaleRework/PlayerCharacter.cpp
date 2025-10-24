@@ -88,7 +88,6 @@ void APlayerCharacter::BeginPlay()
 				UStatsAttributeSet::GetAgilityAttribute(), InitialAgility);
 			AbilitySystemComponent->SetNumericAttributeBase(
 				UStatsAttributeSet::GetLevelAttribute(), InitialLevel);			
-			//UpdateBasicAttributesBaseOnStats();
 		}	
 
 	}
@@ -123,6 +122,17 @@ void APlayerCharacter::BeginPlay()
             RegenEffectHandle = AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
         }
     }
+
+	// Grant Tier 1 Abilities
+	for (TSubclassOf<UGameplayAbility> AbilityClass : Tier1Abilities)
+	{
+		if (AbilityClass)
+		{
+			AbilitySystemComponent->GiveAbility(
+				FGameplayAbilitySpec(AbilityClass, 1, INDEX_NONE, this)
+				);
+		}
+	}
 	
 }
 
@@ -195,34 +205,6 @@ bool APlayerCharacter::AddStatPoint(FGameplayTag StatTag, int32 Amount)
 	SaveGame(CurrentSaveSlot);
 	return true;
 	
-    /*// Identify which attribute to modify
-    FGameplayAttribute AttributeToModify;
-    
-    if (StatTag.MatchesTagExact(FGameplayTag::RequestGameplayTag("Data.Stats.Strength")))
-        AttributeToModify = UStatsAttributeSet::GetStrengthAttribute();
-    else if (StatTag.MatchesTagExact(FGameplayTag::RequestGameplayTag("Data.Stats.Intelligence")))
-        AttributeToModify = UStatsAttributeSet::GetIntelligenceAttribute();
-    else if (StatTag.MatchesTagExact(FGameplayTag::RequestGameplayTag("Data.Stats.Vitality")))
-        AttributeToModify = UStatsAttributeSet::GetVitalityAttribute();
-    else if (StatTag.MatchesTagExact(FGameplayTag::RequestGameplayTag("Data.Stats.Agility")))
-        AttributeToModify = UStatsAttributeSet::GetAgilityAttribute();
-    else
-        return false;
-
-    // Remove available points
-    AbilitySystemComponent->SetNumericAttributeBase(
-        UStatsAttributeSet::GetAvailableStatPointsAttribute(), 
-        AvailablePoints - Amount);
-
-    // Add to chosen stats
-    const float CurrentValue = AbilitySystemComponent->GetNumericAttribute(AttributeToModify);
-    AbilitySystemComponent->SetNumericAttributeBase(AttributeToModify, CurrentValue + Amount);
-
-    UE_LOG(LogTemp, Log, TEXT("Added %d point(s) to %s"), Amount, *StatTag.ToString());
-
-	SaveGame(SaveSlotName);
-	
-    return true;*/
 }
 
 float APlayerCharacter::GetAvailableStatPoints() const

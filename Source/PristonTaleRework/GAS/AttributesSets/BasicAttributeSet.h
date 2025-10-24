@@ -53,6 +53,10 @@ public:
 	FGameplayAttributeData DefenseRate;
 	ATTRIBUTE_ACCESSORS_BASIC(UBasicAttributeSet, DefenseRate);
 
+	UPROPERTY(BlueprintReadOnly, Category = "GAS|Attributes")
+	FGameplayAttributeData IncomingDamage;
+	ATTRIBUTE_ACCESSORS_BASIC(UBasicAttributeSet, IncomingDamage)
+
 public:
 	UFUNCTION()
 	void OnRep_Health(const FGameplayAttributeData& OldValue) const

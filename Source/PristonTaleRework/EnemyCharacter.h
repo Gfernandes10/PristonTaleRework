@@ -13,5 +13,11 @@ UCLASS()
 class PRISTONTALEREWORK_API AEnemyCharacter : public ABaseCharacter
 {
 	GENERATED_BODY()
+
+	AEnemyCharacter();
+
+	virtual void BeginPlay() override;
+
+
 	
 };

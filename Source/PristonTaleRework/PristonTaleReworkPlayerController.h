@@ -44,6 +44,12 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* SetDestinationTouchAction;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* RightClickAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+	class UInputAction* ShiftRightClickAction;
+	
 	/** True if the controlled character should navigate to the mouse cursor. */
 	uint32 bMoveToMouseCursor : 1;
 
@@ -61,6 +67,11 @@ public:
 	/** Constructor */
 	APristonTaleReworkPlayerController();
 
+private: 
+	bool bIsAutoAttacking = false;
+	TWeakObjectPtr<AActor> AutoAttackTarget;
+	FTimerHandle AutoAttackCheckTimer;
+	
 protected:
 
 	/** Initialize input bindings */
@@ -72,7 +83,12 @@ protected:
 	void OnSetDestinationReleased();
 	void OnTouchTriggered();
 	void OnTouchReleased();
-
+	void OnRightMouseClick();
+	void OnShiftRightMouseClick();
+	void StartAutoAttack(AActor* Target);
+	void StopAutoAttack();
+	void CheckAutoAttackConditions();
+	void ExecuteSingleAttack(AActor* Target);
 };
 
 

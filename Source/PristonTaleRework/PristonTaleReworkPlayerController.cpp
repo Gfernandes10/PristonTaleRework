@@ -5,7 +5,7 @@
 #include "Blueprint/AIBlueprintHelperLibrary.h"
 #include "NiagaraSystem.h"
 #include "NiagaraFunctionLibrary.h"
-#include "PristonTaleReworkCharacter.h"
+#include "PlayerCharacter.h"
 #include "Engine/World.h"
 #include "EnhancedInputComponent.h"
 #include "InputActionValue.h"
@@ -48,6 +48,12 @@ void APristonTaleReworkPlayerController::SetupInputComponent()
 			EnhancedInputComponent->BindAction(SetDestinationClickAction, ETriggerEvent::Completed, this, &APristonTaleReworkPlayerController::OnSetDestinationReleased);
 			EnhancedInputComponent->BindAction(SetDestinationClickAction, ETriggerEvent::Canceled, this, &APristonTaleReworkPlayerController::OnSetDestinationReleased);
 
+			// Setup right mouse click event
+			EnhancedInputComponent->BindAction(RightClickAction, ETriggerEvent::Started, this, &APristonTaleReworkPlayerController::OnRightMouseClick);
+
+			// Setup Shift + Right Click
+			EnhancedInputComponent->BindAction(ShiftRightClickAction, ETriggerEvent::Started, this, &APristonTaleReworkPlayerController::OnShiftRightMouseClick);
+
 			// Setup touch input events
 			EnhancedInputComponent->BindAction(SetDestinationTouchAction, ETriggerEvent::Started, this, &APristonTaleReworkPlayerController::OnInputStarted);
 			EnhancedInputComponent->BindAction(SetDestinationTouchAction, ETriggerEvent::Triggered, this, &APristonTaleReworkPlayerController::OnTouchTriggered);
@@ -63,6 +69,10 @@ void APristonTaleReworkPlayerController::SetupInputComponent()
 
 void APristonTaleReworkPlayerController::OnInputStarted()
 {
+	if (bIsAutoAttacking)
+	{
+		StopAutoAttack();
+	}
 	StopMovement();
 }
 
@@ -122,4 +132,160 @@ void APristonTaleReworkPlayerController::OnTouchReleased()
 {
 	bIsTouch = false;
 	OnSetDestinationReleased();
+}
+
+void APristonTaleReworkPlayerController::OnRightMouseClick()
+{
+	if (bIsAutoAttacking)
+	{
+		StopAutoAttack();
+	}
+	FHitResult HitResult;
+	GetHitResultUnderCursor(ECC_Pawn, false, HitResult);
+	
+	if (!HitResult.GetActor() || !HitResult.GetActor()->ActorHasTag("Combat.CanAttack.Enemy"))
+	{
+		return;
+	}
+	
+	APlayerCharacter* PlayerChar = GetPawn<APlayerCharacter>();
+	if (!PlayerChar)
+	{
+		return;
+	}
+
+	UAbilitySystemComponent* ASC = PlayerChar->GetAbilitySystemComponent();
+	if (!ASC)
+	{
+		return;
+	}
+
+	FGameplayEventData Payload;
+	Payload.Target = HitResult.GetActor();
+
+	FGameplayTag AbilityTag = FGameplayTag::RequestGameplayTag("Ability.Attack.Melee");
+	int32 TriggeredCount = ASC->HandleGameplayEvent(AbilityTag, &Payload);
+
+	UE_LOG(LogPristonTaleRework, Warning, TEXT("HandleGameplayEvent retornou %d abilities ativadas"), TriggeredCount);
+    
+	if (TriggeredCount == 0)
+	{
+		UE_LOG(LogPristonTaleRework, Error, TEXT("NENHUMA ability respondeu ao evento %s!"), *AbilityTag.ToString());
+	}
+}
+void APristonTaleReworkPlayerController::OnShiftRightMouseClick()
+{
+	FHitResult HitResult;
+	GetHitResultUnderCursor(ECC_Pawn, false, HitResult);
+
+	if (!HitResult.GetActor() || !HitResult.GetActor()->ActorHasTag("Combat.CanAttack.Enemy"))
+	{
+		StopAutoAttack();
+		return;
+	}
+	
+	StartAutoAttack(HitResult.GetActor());
+}
+void APristonTaleReworkPlayerController::StartAutoAttack(AActor* Target)
+{
+	if (!Target)
+	{
+		return;
+	}
+	
+	StopAutoAttack();
+
+	bIsAutoAttacking = true;
+	AutoAttackTarget = Target;
+	
+	
+	ExecuteSingleAttack(Target);
+	
+	GetWorld()->GetTimerManager().SetTimer(
+		AutoAttackCheckTimer,
+		this,
+		&APristonTaleReworkPlayerController::CheckAutoAttackConditions,
+		0.1f, // Verificar a cada 0.5 segundos
+		true
+	);
+}
+void APristonTaleReworkPlayerController::StopAutoAttack()
+{
+	if (!bIsAutoAttacking)
+	{
+		return;
+	}
+
+	bIsAutoAttacking = false;
+	GetWorld()->GetTimerManager().ClearTimer(AutoAttackCheckTimer);
+	AutoAttackTarget.Reset();
+
+	UE_LOG(LogPristonTaleRework, Warning, TEXT("Auto-attack stoped"));
+}
+void APristonTaleReworkPlayerController::CheckAutoAttackConditions()
+{
+	if (!bIsAutoAttacking)
+	{
+		return;
+	}
+	
+	if (!AutoAttackTarget.IsValid())
+	{
+		UE_LOG(LogPristonTaleRework, Warning, TEXT("Target killed, stopping auto-attack"));
+		StopAutoAttack();
+		return;
+	}
+	
+	AActor* Target = AutoAttackTarget.Get();
+    
+	// Opção 1: Verifiy if target still has "CanAttack.Enemy" tag
+	if (!Target->ActorHasTag("Combat.CanAttack.Enemy"))
+	{
+		UE_LOG(LogPristonTaleRework, Warning, TEXT("Target is no longer attackable, stopping auto-attack"));
+		StopAutoAttack();
+		return;
+	}
+
+
+	APlayerCharacter* PlayerChar = GetPawn<APlayerCharacter>();
+	if (UAbilitySystemComponent* ASC = PlayerChar->GetAbilitySystemComponent())
+	{
+		FGameplayTag CooldownTag = FGameplayTag::RequestGameplayTag("Cooldown.Attack.Melee");
+		if (ASC->HasMatchingGameplayTag(CooldownTag))
+		{
+			return;
+		}
+	}
+	// Ok, execute next attack
+	ExecuteSingleAttack(Target);
+}
+void APristonTaleReworkPlayerController::ExecuteSingleAttack(AActor* Target)
+{
+	if (!Target)
+	{
+		return;
+	}
+
+	APlayerCharacter* PlayerChar = GetPawn<APlayerCharacter>();
+	if (!PlayerChar)
+	{
+		return;
+	}
+
+	UAbilitySystemComponent* ASC = PlayerChar->GetAbilitySystemComponent();
+	if (!ASC)
+	{
+		return;
+	}
+
+	FGameplayEventData Payload;
+	Payload.Target = Target;
+
+	FGameplayTag AbilityTag = FGameplayTag::RequestGameplayTag("Ability.Attack.Melee");
+	int32 TriggeredCount = ASC->HandleGameplayEvent(AbilityTag, &Payload);
+
+	if (TriggeredCount == 0)
+	{
+		UE_LOG(LogPristonTaleRework, Warning, TEXT("Fail to execute auto-attack ability on target %s"), *Target->GetName());
+	}
 }

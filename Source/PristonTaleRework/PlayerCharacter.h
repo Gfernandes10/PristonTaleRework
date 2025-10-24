@@ -58,9 +58,12 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Stats")
 	int32 PointsPerLevel = 5;
 	
-	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SaveGame")
-	// FString SaveSlotName = TEXT("PlayerSlot");
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Abilities|Tier1")
+	TArray<TSubclassOf<UGameplayAbility>> Tier1Abilities;
 
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Abilities|Tier2")
+	TArray<TSubclassOf<UGameplayAbility>> Tier2Abilities;
+	
 	UPROPERTY(EditDefaultsOnly, Category = "Experience")
 	UDataTable* ExperienceTable;
 

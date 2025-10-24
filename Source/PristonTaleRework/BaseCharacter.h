@@ -50,8 +50,12 @@ protected:
 	float DefaultDefense = 2.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAS|DefaultBasicAttributes")
 	float DefaultDefenseRate = 0.3f;	
-	
-	
+
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Abilities|Basic")
+	TArray<TSubclassOf<UGameplayAbility>> BasicAbilities;
+
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Effects|Basic")
+	TArray<TSubclassOf<UGameplayEffect>> BasicEffects;
 
 protected:
 	// Called when the game starts or when spawned

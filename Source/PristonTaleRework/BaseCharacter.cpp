@@ -63,6 +63,34 @@ void ABaseCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	InitializeDefaultBasicAttributes();
+
+	// Grant Basic Effects
+	for (TSubclassOf<UGameplayEffect> EffectClass : BasicEffects)
+	{
+		if (EffectClass)
+		{
+			FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
+			EffectContext.AddSourceObject(this);
+
+			FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(
+				EffectClass, 1.0f, EffectContext);
+
+			if (SpecHandle.IsValid())
+			{
+				AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+			}
+		}
+	}
+	// Grant Basic Abilities
+	for (TSubclassOf<UGameplayAbility> AbilityClass : BasicAbilities)
+	{
+		if (AbilityClass)
+		{
+			AbilitySystemComponent->GiveAbility(
+				FGameplayAbilitySpec(AbilityClass, 1, INDEX_NONE, this)
+				);
+		}
+	}
 }
 
 // Called every frame

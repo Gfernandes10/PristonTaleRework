@@ -50,12 +50,16 @@ void UBasicAttributeSet::ManageRegenTag(UAbilitySystemComponent* ASC, const FGam
 void UBasicAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
 {
 	Super::PreAttributeChange(Attribute, NewValue);
+	if (Attribute == GetDefenseRateAttribute())
+	{
+		NewValue = FMath::Clamp(NewValue, 0.0f, 0.7f); 
+	}
 }
 
 void UBasicAttributeSet::PostAttributeChange(const FGameplayAttribute& Attribute, float OldValue, float NewValue)
 {
     Super::PostAttributeChange(Attribute, OldValue, NewValue);
-
+	
     if (Attribute == GetMaxHealthAttribute())
     {
         const float HealthPercentage = (NewValue > 0.0f)
@@ -104,4 +108,39 @@ void UBasicAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
         // SetMana(FMath::Clamp(GetMana(), 0.0f, GetMaxMana()));
         ManageRegenTag(ASC, NeedsManaRegenTag, GetMana() < GetMaxMana());
     }
+
+	if (Data.EvaluatedData.Attribute == GetIncomingDamageAttribute())
+	{
+		static const FGameplayTag DeadTag = FGameplayTag::RequestGameplayTag("Character.State.Dead");
+    
+		if (ASC && ASC->HasMatchingGameplayTag(DeadTag))
+		{
+			// Dead already
+			SetIncomingDamage(0.0f);
+			return;
+		}
+		float DamageValue = GetIncomingDamage();
+		SetIncomingDamage(0.0f);
+		if (DamageValue > 0.0f)
+		{
+			bool bDefenseApplied = FMath::FRand() <= GetDefenseRate();
+			float FinalDamage = DamageValue;
+			if (bDefenseApplied)
+			{
+				FinalDamage = FMath::Max(0.0f, DamageValue - GetDefense());
+			}
+			float NewHealth = GetHealth() - FinalDamage;
+			SetHealth(FMath::Clamp(NewHealth, 0.0f, GetMaxHealth()));
+
+			if (GetHealth() <= 0.0f)
+			{
+				// Handle death logic here (e.g., broadcast a death event)
+				if (ASC)
+				{
+					ASC->AddLooseGameplayTag(DeadTag);
+					UE_LOG(LogTemp, Warning, TEXT("%s morreu!"), *Data.Target.GetAvatarActor()->GetName());
+				}
+			}
+		}
+	}
 }
