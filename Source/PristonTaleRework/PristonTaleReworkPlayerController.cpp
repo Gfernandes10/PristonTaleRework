@@ -1,6 +1,8 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "PristonTaleReworkPlayerController.h"
+
+#include "AbilitySystemGlobals.h"
 #include "GameFramework/Pawn.h"
 #include "Blueprint/AIBlueprintHelperLibrary.h"
 #include "NiagaraSystem.h"
@@ -143,9 +145,33 @@ void APristonTaleReworkPlayerController::OnRightMouseClick()
 	FHitResult HitResult;
 	GetHitResultUnderCursor(ECC_Pawn, false, HitResult);
 	
-	if (!HitResult.GetActor() || !HitResult.GetActor()->ActorHasTag("Combat.CanAttack.Enemy"))
+	// Adicione log para debug
+	if (HitResult.GetActor())
 	{
-		return;
+		AActor* ClickedActor = HitResult.GetActor();
+
+		UE_LOG(LogPristonTaleRework, Warning, TEXT("Actor clicado: %s"), *ClickedActor->GetName());
+
+		// Verificar se o ator tem AbilitySystemComponent
+		UAbilitySystemComponent* TargetASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(ClickedActor);
+        
+		if (!TargetASC)
+		{
+			UE_LOG(LogPristonTaleRework, Warning, TEXT("Ator não possui AbilitySystemComponent"));
+			return;
+		}
+
+		// Verificar Gameplay Tag ao invés de Actor Tag
+		static const FGameplayTag CombatCanAttackEnemyTag = FGameplayTag::RequestGameplayTag(FName("Combat.CanAttack.Enemy"));
+        
+		if (!TargetASC->HasMatchingGameplayTag(CombatCanAttackEnemyTag))
+		{
+			UE_LOG(LogPristonTaleRework, Warning, TEXT("NÃO tem Gameplay Tag Combat.CanAttack.Enemy"));
+			return;
+		}
+
+		UE_LOG(LogPristonTaleRework, Warning, TEXT("Tem Gameplay Tag Combat.CanAttack.Enemy"));
+
 	}
 	
 	APlayerCharacter* PlayerChar = GetPawn<APlayerCharacter>();
@@ -169,11 +195,34 @@ void APristonTaleReworkPlayerController::OnShiftRightMouseClick()
 {
 	FHitResult HitResult;
 	GetHitResultUnderCursor(ECC_Pawn, false, HitResult);
+	
 
-	if (!HitResult.GetActor() || !HitResult.GetActor()->ActorHasTag("Combat.CanAttack.Enemy"))
+	if (HitResult.GetActor())
 	{
+		AActor* ClickedActor = HitResult.GetActor();
+
+		UE_LOG(LogPristonTaleRework, Warning, TEXT("Actor clicado: %s"), *ClickedActor->GetName());
+
+		// Verificar se o ator tem AbilitySystemComponent
+		UAbilitySystemComponent* TargetASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(ClickedActor);
+        
+		if (!TargetASC)
+		{
+			UE_LOG(LogPristonTaleRework, Warning, TEXT("Ator não possui AbilitySystemComponent"));
+			return;
+		}
+
+		// Verificar Gameplay Tag ao invés de Actor Tag
+		static const FGameplayTag CombatCanAttackEnemyTag = FGameplayTag::RequestGameplayTag(FName("Combat.CanAttack.Enemy"));
+        
+		if (!TargetASC->HasMatchingGameplayTag(CombatCanAttackEnemyTag))
+		{
+			UE_LOG(LogPristonTaleRework, Warning, TEXT("NÃO tem Gameplay Tag Combat.CanAttack.Enemy"));
+			return;
+		}
 		StopAutoAttack();
-		return;
+		UE_LOG(LogPristonTaleRework, Warning, TEXT("Tem Gameplay Tag Combat.CanAttack.Enemy"));
+
 	}
 	
 	StartAutoAttack(HitResult.GetActor());
