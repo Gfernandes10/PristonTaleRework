@@ -136,9 +136,14 @@ void UGA_MeleeAttack::ExecuteAttack()
 
         if (SpecHandle.IsValid())
         {
-        	if (UAbilitySystemComponent* TargetASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(TargetActor.Get()))
+        	const FGameplayTag MultTag = FGameplayTag::RequestGameplayTag(FName("Combat.DamageMultiplier"));
+        	if (FGameplayEffectSpec* Spec = SpecHandle.Data.Get())
         	{
-        		GetAbilitySystemComponentFromActorInfo()->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
+        		Spec->SetSetByCallerMagnitude(MultTag, DamageMultiplier);
+        		if (UAbilitySystemComponent* TargetASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(TargetActor.Get()))
+        		{
+        			GetAbilitySystemComponentFromActorInfo()->ApplyGameplayEffectSpecToTarget(*Spec, TargetASC);
+        		}
         	}
         }
     }

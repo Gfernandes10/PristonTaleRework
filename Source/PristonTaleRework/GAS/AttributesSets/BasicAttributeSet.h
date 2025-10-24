@@ -57,6 +57,10 @@ public:
 	FGameplayAttributeData IncomingDamage;
 	ATTRIBUTE_ACCESSORS_BASIC(UBasicAttributeSet, IncomingDamage)
 
+	UPROPERTY(BlueprintReadOnly, Category = "GAS|Attributes")
+	FGameplayAttributeData ApplyingDamage;
+	ATTRIBUTE_ACCESSORS_BASIC(UBasicAttributeSet, ApplyingDamage)
+
 public:
 	UFUNCTION()
 	void OnRep_Health(const FGameplayAttributeData& OldValue) const
@@ -106,6 +110,8 @@ public:
 	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
 
 	virtual void PostAttributeChange(const FGameplayAttribute& Attribute, float OldValue, float NewValue) override;
+
+	virtual bool PreGameplayEffectExecute(FGameplayEffectModCallbackData& Data) override;
 	
 
 private:

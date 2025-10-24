@@ -8,6 +8,7 @@ struct FDamageStatics
     DECLARE_ATTRIBUTE_CAPTUREDEF(MinPowerAttack);
     DECLARE_ATTRIBUTE_CAPTUREDEF(MaxPowerAttack);
     DECLARE_ATTRIBUTE_CAPTUREDEF(IncomingDamage);
+    
 
     FDamageStatics()
     {
@@ -72,10 +73,26 @@ void UGE_DamageExecution::Execute_Implementation(const FGameplayEffectCustomExec
         EvaluateParameters,
         MaxAttack
     );
-
+    
     // Calcular dano aleatório entre Min e Max
     float RawDamage = FMath::RandRange(MinAttack, MaxAttack);
+    
+    const FGameplayTag MultTag = FGameplayTag::RequestGameplayTag(FName("Combat.DamageMultiplier"));
+    bool bHasMultiplier = false;
+    float Multiplier = Spec.GetSetByCallerMagnitude(MultTag, bHasMultiplier);
+    
+    UE_LOG(LogTemp, Warning, TEXT("Tag: %s  | HasMultiplier: %d  | Multiplier: %.3f"),
+        *MultTag.ToString(), bHasMultiplier ? 1 : 0, Multiplier);
 
+    // usar fallback se necessário
+    if (!bHasMultiplier)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("SetByCaller não encontrado neste Spec — verifique onde foi definido."));
+        Multiplier = 1.0f;
+    }
+    
+    RawDamage *= Multiplier;
+    
     UE_LOG(LogTemp, Warning, TEXT("Calculated damage: %.1f (Min: %.1f, Max: %.1f)"),
         RawDamage, MinAttack, MaxAttack);
 

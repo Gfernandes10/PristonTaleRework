@@ -88,6 +88,15 @@ void UBasicAttributeSet::PostAttributeChange(const FGameplayAttribute& Attribute
     }
 }
 
+// cpp
+bool UBasicAttributeSet::PreGameplayEffectExecute(FGameplayEffectModCallbackData& Data)
+{
+	bool bParentReturn = Super::PreGameplayEffectExecute(Data);
+
+	return bParentReturn;
+}
+
+
 void UBasicAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
 {
     Super::PostGameplayEffectExecute(Data);
@@ -119,16 +128,27 @@ void UBasicAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 			SetIncomingDamage(0.0f);
 			return;
 		}
+    
 		float DamageValue = GetIncomingDamage();
+		UE_LOG(LogTemp, Warning, TEXT("IncomingDamage: %.2f"), DamageValue);
+    
 		SetIncomingDamage(0.0f);
+    
 		if (DamageValue > 0.0f)
 		{
 			bool bDefenseApplied = FMath::FRand() <= GetDefenseRate();
 			float FinalDamage = DamageValue;
+        
 			if (bDefenseApplied)
 			{
 				FinalDamage = FMath::Max(0.0f, DamageValue - GetDefense());
+				UE_LOG(LogTemp, Warning, TEXT("Defesa Aplicada! Dano Original: %.2f | Dano Após Defesa: %.2f"), DamageValue, FinalDamage);
 			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Defesa NÃO Aplicada! Dano Final: %.2f"), FinalDamage);
+			}
+        
 			float NewHealth = GetHealth() - FinalDamage;
 			SetHealth(FMath::Clamp(NewHealth, 0.0f, GetMaxHealth()));
 

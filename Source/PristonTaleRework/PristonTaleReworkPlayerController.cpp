@@ -162,16 +162,8 @@ void APristonTaleReworkPlayerController::OnRightMouseClick()
 
 	FGameplayEventData Payload;
 	Payload.Target = HitResult.GetActor();
-
-	FGameplayTag AbilityTag = FGameplayTag::RequestGameplayTag("Ability.Attack.Melee");
-	int32 TriggeredCount = ASC->HandleGameplayEvent(AbilityTag, &Payload);
-
-	UE_LOG(LogPristonTaleRework, Warning, TEXT("HandleGameplayEvent retornou %d abilities ativadas"), TriggeredCount);
-    
-	if (TriggeredCount == 0)
-	{
-		UE_LOG(LogPristonTaleRework, Error, TEXT("NENHUMA ability respondeu ao evento %s!"), *AbilityTag.ToString());
-	}
+	
+	ExecuteSingleAttack(HitResult.GetActor());
 }
 void APristonTaleReworkPlayerController::OnShiftRightMouseClick()
 {
@@ -281,11 +273,6 @@ void APristonTaleReworkPlayerController::ExecuteSingleAttack(AActor* Target)
 	FGameplayEventData Payload;
 	Payload.Target = Target;
 
-	FGameplayTag AbilityTag = FGameplayTag::RequestGameplayTag("Ability.Attack.Melee");
-	int32 TriggeredCount = ASC->HandleGameplayEvent(AbilityTag, &Payload);
-
-	if (TriggeredCount == 0)
-	{
-		UE_LOG(LogPristonTaleRework, Warning, TEXT("Fail to execute auto-attack ability on target %s"), *Target->GetName());
-	}
+	FGameplayTag AbilityTag = PlayerChar->GetCurrentAttackTag();
+    ASC->HandleGameplayEvent(AbilityTag, &Payload);
 }

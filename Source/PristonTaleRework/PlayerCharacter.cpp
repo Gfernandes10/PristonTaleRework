@@ -398,3 +398,14 @@ FString APlayerCharacter::GetSlotNameFromEnum(EGameSaveSlots Slot) const
 	default: return TEXT("GameSlotA");
 	}
 }
+
+FGameplayTag APlayerCharacter::GetCurrentAttackTag() const
+{
+	if (CurrentAttackTag.IsValid())
+	{
+		return CurrentAttackTag;
+	}
+
+	// Fallback padrão
+	return FGameplayTag::RequestGameplayTag(TEXT("Ability.Attack.Melee"));
+}

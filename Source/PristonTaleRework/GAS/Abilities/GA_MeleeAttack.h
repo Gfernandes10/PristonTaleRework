@@ -25,7 +25,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Combat")
 	TSubclassOf<UGameplayEffect> DamageEffect;
-	
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Combat")
+	float DamageMultiplier = 1.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Combo")
 	TArray<UAnimMontage*> ComboMontages;
@@ -39,6 +41,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Combat|VFX")
 	USoundBase* AttackSound;
 
+	
 private:
 	FTimerHandle MovementCheckTimer;
 	FTimerHandle ComboResetTimer;

@@ -31,8 +31,6 @@ public:
 
 protected:
 	// Gameplay Effect that converts Stats → Atributos
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Effects")
-	TSubclassOf<UGameplayEffect> StatsToAttributesEffect;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Effects")
 	TMap<FGameplayTag, TSubclassOf<UGameplayEffect>> StatPointChangeEffects;
@@ -72,6 +70,9 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Save System")
 	EGameSaveSlots CurrentSaveSlot = EGameSaveSlots::SlotA;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAS|Abilities")
+	FGameplayTag CurrentAttackTag;
 	
 public:
 
@@ -126,6 +127,10 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Experience")
 	float GetExperienceProgress() const; // Returns 0.0 to 1.0 for UI
+
+	// Getter para uso externo (controller)
+	UFUNCTION(BlueprintCallable, Category = "GAS|Abilities")
+	FGameplayTag GetCurrentAttackTag() const;
 
 private:
 	FActiveGameplayEffectHandle RegenEffectHandle;
