@@ -28,7 +28,9 @@ void UGA_MeleeAttack::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
-
+	GetAbilitySystemComponentFromActorInfo()->AddLooseGameplayTag(
+		FGameplayTag::RequestGameplayTag("Ability.Attack.Active")
+	);
 	GetWorld()->GetTimerManager().ClearTimer(ComboResetTimer);
 
 	if (ComboMontages.Num() == 0)
@@ -213,7 +215,10 @@ void UGA_MeleeAttack::EndAbility(const FGameplayAbilitySpecHandle Handle,
 {
 	GetWorld()->GetTimerManager().ClearTimer(MovementCheckTimer);
 	TargetActor.Reset();
-
+	
+	GetAbilitySystemComponentFromActorInfo()->RemoveLooseGameplayTag(
+		FGameplayTag::RequestGameplayTag("Ability.Attack.Active")
+	);
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 void UGA_MeleeAttack::ResetCombo()

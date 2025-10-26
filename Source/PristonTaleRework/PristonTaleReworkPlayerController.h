@@ -83,6 +83,7 @@ protected:
 	void OnSetDestinationReleased();
 	void OnTouchTriggered();
 	void OnTouchReleased();
+	bool VerifyHitResult(FHitResult& HitResult);
 	void OnRightMouseClick();
 	void OnShiftRightMouseClick();
 	void StartAutoAttack(AActor* Target);

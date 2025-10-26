@@ -136,55 +136,58 @@ void APristonTaleReworkPlayerController::OnTouchReleased()
 	OnSetDestinationReleased();
 }
 
+bool APristonTaleReworkPlayerController::VerifyHitResult(FHitResult& HitResult)
+{
+	FVector2D MousePosition;
+	GetMousePosition(MousePosition.X, MousePosition.Y);
+
+	FVector WorldLocation, WorldDirection;
+	DeprojectScreenPositionToWorld(MousePosition.X, MousePosition.Y, WorldLocation, WorldDirection);
+
+	FVector TraceEnd = WorldLocation + (WorldDirection * 10000.0f);
+
+	TArray<FHitResult> HitResults;
+	TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
+	ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_Pawn));
+	ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_WorldDynamic));
+    
+	GetWorld()->SweepMultiByObjectType(
+		HitResults,
+		WorldLocation,
+		TraceEnd,
+		FQuat::Identity,
+		ObjectTypes,
+		FCollisionShape::MakeSphere(100.0f)
+	);
+	
+	UE_LOG(LogPristonTaleRework, Warning, TEXT("Hits encontrados: %d"), HitResults.Num());
+    
+	for (const FHitResult& Hit : HitResults)
+	{
+		if (UAbilitySystemComponent* TargetASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(Hit.GetActor()))
+		{
+			static const FGameplayTag CombatCanAttackEnemyTag = FGameplayTag::RequestGameplayTag(FName("Combat.CanAttack.Enemy"));
+			if (TargetASC->HasMatchingGameplayTag(CombatCanAttackEnemyTag))
+			{
+				HitResult = Hit;
+				UE_LOG(LogPristonTaleRework, Warning, TEXT("Inimigo válido encontrado: %s"), *Hit.GetActor()->GetName());
+				return false;
+			}
+		}
+	}
+	UE_LOG(LogPristonTaleRework, Warning, TEXT("Nenhum inimigo válido encontrado"));
+	return true;
+}
+
 void APristonTaleReworkPlayerController::OnRightMouseClick()
 {
 	if (bIsAutoAttacking)
 	{
 		StopAutoAttack();
 	}
+
 	FHitResult HitResult;
-	GetHitResultUnderCursor(ECC_Pawn, false, HitResult);
-	
-	// Adicione log para debug
-	if (HitResult.GetActor())
-	{
-		AActor* ClickedActor = HitResult.GetActor();
-
-		UE_LOG(LogPristonTaleRework, Warning, TEXT("Actor clicado: %s"), *ClickedActor->GetName());
-
-		// Verificar se o ator tem AbilitySystemComponent
-		UAbilitySystemComponent* TargetASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(ClickedActor);
-        
-		if (!TargetASC)
-		{
-			UE_LOG(LogPristonTaleRework, Warning, TEXT("Ator não possui AbilitySystemComponent"));
-			return;
-		}
-
-		// Verificar Gameplay Tag ao invés de Actor Tag
-		static const FGameplayTag CombatCanAttackEnemyTag = FGameplayTag::RequestGameplayTag(FName("Combat.CanAttack.Enemy"));
-        
-		if (!TargetASC->HasMatchingGameplayTag(CombatCanAttackEnemyTag))
-		{
-			UE_LOG(LogPristonTaleRework, Warning, TEXT("NÃO tem Gameplay Tag Combat.CanAttack.Enemy"));
-			return;
-		}
-
-		UE_LOG(LogPristonTaleRework, Warning, TEXT("Tem Gameplay Tag Combat.CanAttack.Enemy"));
-
-	}
-	
-	APlayerCharacter* PlayerChar = GetPawn<APlayerCharacter>();
-	if (!PlayerChar)
-	{
-		return;
-	}
-
-	UAbilitySystemComponent* ASC = PlayerChar->GetAbilitySystemComponent();
-	if (!ASC)
-	{
-		return;
-	}
+	if (VerifyHitResult(HitResult)) return;
 
 	FGameplayEventData Payload;
 	Payload.Target = HitResult.GetActor();
@@ -194,36 +197,8 @@ void APristonTaleReworkPlayerController::OnRightMouseClick()
 void APristonTaleReworkPlayerController::OnShiftRightMouseClick()
 {
 	FHitResult HitResult;
-	GetHitResultUnderCursor(ECC_Pawn, false, HitResult);
 	
-
-	if (HitResult.GetActor())
-	{
-		AActor* ClickedActor = HitResult.GetActor();
-
-		UE_LOG(LogPristonTaleRework, Warning, TEXT("Actor clicado: %s"), *ClickedActor->GetName());
-
-		// Verificar se o ator tem AbilitySystemComponent
-		UAbilitySystemComponent* TargetASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(ClickedActor);
-        
-		if (!TargetASC)
-		{
-			UE_LOG(LogPristonTaleRework, Warning, TEXT("Ator não possui AbilitySystemComponent"));
-			return;
-		}
-
-		// Verificar Gameplay Tag ao invés de Actor Tag
-		static const FGameplayTag CombatCanAttackEnemyTag = FGameplayTag::RequestGameplayTag(FName("Combat.CanAttack.Enemy"));
-        
-		if (!TargetASC->HasMatchingGameplayTag(CombatCanAttackEnemyTag))
-		{
-			UE_LOG(LogPristonTaleRework, Warning, TEXT("NÃO tem Gameplay Tag Combat.CanAttack.Enemy"));
-			return;
-		}
-		StopAutoAttack();
-		UE_LOG(LogPristonTaleRework, Warning, TEXT("Tem Gameplay Tag Combat.CanAttack.Enemy"));
-
-	}
+	if (VerifyHitResult(HitResult)) return;
 	
 	StartAutoAttack(HitResult.GetActor());
 }
@@ -280,12 +255,12 @@ void APristonTaleReworkPlayerController::CheckAutoAttackConditions()
 	AActor* Target = AutoAttackTarget.Get();
     
 	// Opção 1: Verifiy if target still has "CanAttack.Enemy" tag
-	if (!Target->ActorHasTag("Combat.CanAttack.Enemy"))
-	{
-		UE_LOG(LogPristonTaleRework, Warning, TEXT("Target is no longer attackable, stopping auto-attack"));
-		StopAutoAttack();
-		return;
-	}
+	// if (!Target->ActorHasTag("Combat.CanAttack.Enemy"))
+	// {
+	// 	UE_LOG(LogPristonTaleRework, Warning, TEXT("Target is no longer attackable, stopping auto-attack"));
+	// 	StopAutoAttack();
+	// 	return;
+	// }
 
 
 	APlayerCharacter* PlayerChar = GetPawn<APlayerCharacter>();

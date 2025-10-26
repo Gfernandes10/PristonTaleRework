@@ -212,13 +212,17 @@ TArray<AActor*> UGA_AreaAttack::FindEnemiesInArea(const FVector& OriginLocation)
 
     FCollisionQueryParams QueryParams;
     QueryParams.AddIgnoredActor(Avatar);
+    
+    TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
+    ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_Pawn));
+    ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_WorldDynamic));
 
-    bool bHit = GetWorld()->SweepMultiByChannel(
+    bool bHit = GetWorld()->SweepMultiByObjectType(
         HitResults,
         OriginLocation,
         OriginLocation,
         FQuat::Identity,
-        EnemyCollisionChannel,
+        ObjectTypes,
         FCollisionShape::MakeSphere(AreaRadius),
         QueryParams
     );
@@ -226,10 +230,16 @@ TArray<AActor*> UGA_AreaAttack::FindEnemiesInArea(const FVector& OriginLocation)
     if (bHit)
     {
         FVector ForwardVector = Avatar->GetActorForwardVector();
+        static const FGameplayTag CombatCanAttackEnemyTag = FGameplayTag::RequestGameplayTag(FName("Combat.CanAttack.Enemy"));
+
 
         for (const FHitResult& Hit : HitResults)
         {
             if (!Hit.GetActor() || Hit.GetActor() == Avatar)
+                continue;
+
+            UAbilitySystemComponent* TargetASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(Hit.GetActor());
+            if (!TargetASC || !TargetASC->HasMatchingGameplayTag(CombatCanAttackEnemyTag))
                 continue;
 
             // Se for cone, verificar ângulo
