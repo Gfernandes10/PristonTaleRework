@@ -53,8 +53,25 @@ void ABaseCharacter::InitializeDefaultBasicAttributes()
 			SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.DefaultBasicAttributes.Defense"), DefaultDefense);
 			SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.DefaultBasicAttributes.DefenseRate"), DefaultDefenseRate);
 			AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
-		}
+		}		
 	}
+}
+void ABaseCharacter::ReviveCharacter()
+{
+    if (!AbilitySystemComponent)
+    {
+        return;
+    }
+
+    // 1. Restaurar atributos
+    InitializeDefaultBasicAttributes();
+	
+
+    // 5. Remover tags de morte
+    FGameplayTagContainer TagsToRemove;
+    TagsToRemove.AddTag(FGameplayTag::RequestGameplayTag("Character.State.Dead"));
+    AbilitySystemComponent->RemoveActiveEffectsWithTags(TagsToRemove);
+    AbilitySystemComponent->RemoveLooseGameplayTag(FGameplayTag::RequestGameplayTag("Character.State.Dead"));
 }
 
 // Called when the game starts or when spawned
