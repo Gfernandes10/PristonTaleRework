@@ -154,54 +154,58 @@ void UGA_MeleeAttack::ExecuteAttack()
 	
     // Play attack montage
 	UAnimMontage* ComboMontageToPlay = GetCurrentComboMontage();
-    if (ComboMontageToPlay)
-    {
-    	OnComboIndexChanged(CurrentComboIndex, ComboMontages.Num());
-    	
-    	UAbilityTask_PlayMontageAndWait* Task = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
+	if (ComboMontageToPlay)
+	{
+		//UE_LOG(LogTemp, Warning, TEXT("🎬 Playing montage: %s"), *ComboMontageToPlay->GetName());
+		OnComboIndexChanged(CurrentComboIndex, ComboMontages.Num());
+
+		UAbilityTask_PlayMontageAndWait* Task = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
 			this,
 			NAME_None,
 			ComboMontageToPlay
 		);
 
-    	if (Task)
-    	{
-    		Task->OnCompleted.AddDynamic(this, &UGA_MeleeAttack::OnMontageCompleted);
-    		Task->OnInterrupted.AddDynamic(this, &UGA_MeleeAttack::OnMontageInterrupted);
-    		Task->OnCancelled.AddDynamic(this, &UGA_MeleeAttack::OnMontageInterrupted);
-    		Task->ReadyForActivation();
-    	}
-    	else
-    	{
-    		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
-    	}
-    }
-    else
-    {
-    	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
-    }
+		if (Task)
+		{
+			Task->OnCompleted.AddDynamic(this, &UGA_MeleeAttack::OnMontageCompleted);
+			Task->OnInterrupted.AddDynamic(this, &UGA_MeleeAttack::OnMontageInterrupted);
+			Task->OnCancelled.AddDynamic(this, &UGA_MeleeAttack::OnMontageInterrupted);
+			Task->ReadyForActivation();
+		}
+		else
+		{
+			//UE_LOG(LogTemp, Error, TEXT("❌ Failed to create PlayMontageAndWait task"));
+			EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+		}
+	}
+	else
+	{
+		//UE_LOG(LogTemp, Error, TEXT("❌ No montage configured, ending ability immediately"));
+		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+	}
 
 
 }
 
 void UGA_MeleeAttack::OnMontageCompleted()
 {
+	//UE_LOG(LogTemp, Warning, TEXT("✅ Montage COMPLETED"));
 	RestoreCollision();
-	// Next animation montage
 	CurrentComboIndex = (CurrentComboIndex + 1) % ComboMontages.Num();
-	// Start combo reset timer
 	GetWorld()->GetTimerManager().SetTimer(
 		ComboResetTimer,
 		this,
 		&UGA_MeleeAttack::ResetCombo,
 		ComboResetTime,
 		false);
-	
+
+	//UE_LOG(LogTemp, Warning, TEXT("📤 Calling EndAbility from OnMontageCompleted"));
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
 }
 
 void UGA_MeleeAttack::OnMontageInterrupted()
 {
+	//UE_LOG(LogTemp, Warning, TEXT("⚠️ Montage INTERRUPTED"));
 	RestoreCollision();
 	ResetCombo();
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
@@ -213,13 +217,18 @@ void UGA_MeleeAttack::EndAbility(const FGameplayAbilitySpecHandle Handle,
 								 bool bReplicateEndAbility,
 								 bool bWasCancelled)
 {
+	//UE_LOG(LogTemp, Warning, TEXT("🛑 EndAbility called (Cancelled: %s)"), bWasCancelled ? TEXT("Yes") : TEXT("No"));
+    
 	GetWorld()->GetTimerManager().ClearTimer(MovementCheckTimer);
 	TargetActor.Reset();
-	
+
 	GetAbilitySystemComponentFromActorInfo()->RemoveLooseGameplayTag(
 		FGameplayTag::RequestGameplayTag("Ability.Attack.Active")
 	);
+    
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
+    
+	//UE_LOG(LogTemp, Warning, TEXT("✅ EndAbility completed"));
 }
 void UGA_MeleeAttack::ResetCombo()
 {

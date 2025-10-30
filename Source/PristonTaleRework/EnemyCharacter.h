@@ -10,6 +10,8 @@
  * 
  */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAttackFinished);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDeathStateChanged, bool, bIsDead);
+
 
 
 UCLASS()
@@ -41,6 +43,9 @@ protected:
 	
 	UPROPERTY(BlueprintAssignable, Category = "Combat")
 	FOnAttackFinished OnAttackFinished;
+
+
+	
 private:
 	FTimerHandle AttackCheckTimer;
 
@@ -56,6 +61,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "AI|Combat")
 	bool GetPlayerTarget();
 
+	UPROPERTY(BlueprintAssignable, Category = "Character State")
+	FOnDeathStateChanged OnDeathStateChanged;
 
 	
 	UFUNCTION(BlueprintCallable, Category = "AI|Combat")
@@ -63,4 +70,7 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "AI|Combat")
 	void StopFollowingPlayer();
+
+	protected:
+	void OnDeathTagChanged(const FGameplayTag Tag, int32 NewCount);
 };

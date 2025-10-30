@@ -31,6 +31,11 @@ void AEnemyCharacter::BeginPlay()
         
 		AbilitySystemComponent->RegisterGameplayTagEvent(AttackActiveTag)
 			.AddUObject(this, &AEnemyCharacter::OnAttackTagChanged);
+
+		FGameplayTag DeadTag = FGameplayTag::RequestGameplayTag("Ability.State.Death");
+
+		AbilitySystemComponent->RegisterGameplayTagEvent(DeadTag, EGameplayTagEventType::NewOrRemoved)
+			.AddUObject(this, &AEnemyCharacter::OnDeathTagChanged);
 		
 	}
 	// GetWorld()->GetTimerManager().SetTimer(
@@ -149,14 +154,47 @@ void AEnemyCharacter::ExecuteAttack()
 	FRotator NewRotation = Direction.Rotation();
 	SetActorRotation(NewRotation);
 
-	// Criar payload com o target
+	
+	// Verificar se a ability já está ativa
+	TArray<FGameplayAbilitySpec>& ActivatableAbilities = AbilitySystemComponent->GetActivatableAbilities();
+    
+	for (FGameplayAbilitySpec& Spec : ActivatableAbilities)
+	{
+		if (Spec.Ability && Spec.Ability->AbilityTags.HasTag(AttackAbilityTag))
+		{
+			if (Spec.IsActive())
+			{
+				UE_LOG(LogTemp, Warning, TEXT("⚠️ Ability já está ativa! Cancelando..."));
+                
+				// Cancelar a ability ativa
+				AbilitySystemComponent->CancelAbilityHandle(Spec.Handle);
+                
+				// Aguardar 1 frame para garantir que foi cancelada
+				FTimerHandle DelayHandle;
+				GetWorld()->GetTimerManager().SetTimer(
+					DelayHandle,
+					[this]()
+					{
+						// Ativar novamente
+						FGameplayEventData Payload;
+						Payload.Target = TargetPlayer.Get();
+						Payload.EventTag = AttackAbilityTag;
+						AbilitySystemComponent->HandleGameplayEvent(AttackAbilityTag, &Payload);
+					},
+					0.01f,
+					false
+				);
+                
+				return;
+			}
+		}
+	}
+
+	// Se não estava ativa, ativar normalmente
 	FGameplayEventData Payload;
 	Payload.Target = TargetPlayer.Get();
-
-	// Ativar habilidade de ataque
+	Payload.EventTag = AttackAbilityTag;
 	AbilitySystemComponent->HandleGameplayEvent(AttackAbilityTag, &Payload);
-
-	//UE_LOG(LogTemp, Log, TEXT("EnemyCharacter: Executed attack on player"));
 }
 void AEnemyCharacter::OnAttackTagChanged(const FGameplayTag Tag, int32 NewCount)
 {
@@ -213,5 +251,20 @@ bool AEnemyCharacter::GetPlayerTarget()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Enemy %s: Player not found"), *GetName());
 		return false;
+	}
+}
+
+void AEnemyCharacter::OnDeathTagChanged(const FGameplayTag Tag, int32 NewCount)
+{
+	bool bIsDead = (NewCount == 0);
+    
+	// Broadcast para o Blueprint
+	OnDeathStateChanged.Broadcast(bIsDead);
+    
+	// Lógica adicional em C++
+	if (bIsDead)
+	{
+		StopFollowingPlayer();
+		// Outras ações quando morrer
 	}
 }

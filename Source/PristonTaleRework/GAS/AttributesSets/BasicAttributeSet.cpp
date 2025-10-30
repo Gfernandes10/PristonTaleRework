@@ -161,6 +161,15 @@ void UBasicAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 					UE_LOG(LogTemp, Warning, TEXT("%s morreu!"), *Data.Target.GetAvatarActor()->GetName());
 				}
 			}
+			else
+			{
+				// Remove Dead tag if health is above 0
+				if (ASC && ASC->HasMatchingGameplayTag(DeadTag))
+				{
+					ASC->RemoveLooseGameplayTag(DeadTag);
+					UE_LOG(LogTemp, Warning, TEXT("%s reviveu!"), *Data.Target.GetAvatarActor()->GetName());
+				}					
+			}
 		}
 	}
 }

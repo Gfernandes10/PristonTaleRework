@@ -67,7 +67,9 @@ protected:
 
 	void InitializeDefaultBasicAttributes();
 
-public:	
+public:		
+	UFUNCTION(BlueprintCallable, Category = "Character State")
+	void ReviveCharacter();
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
@@ -75,4 +77,10 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	virtual class UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Character State")
+	void OnReviveStart();
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Character State")
+	void OnReviveComplete();
 };
