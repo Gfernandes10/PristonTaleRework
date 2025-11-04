@@ -61,8 +61,14 @@ void APlayerCharacter::UpdateBasicAttributesBaseOnStats()
 			StatValue = StatsAttributeSet->GetAgility();
 		else
 			continue;
+		
+		if (!EffectClass || !(*EffectClass))
+		{
+			UE_LOG(LogTemp, Error, TEXT("No GameplayEffect found for StatTag: %s"), *StatTag.ToString());
+			return;
+		}
 
-		AddStatPoint(StatTag,StatValue);
+		AddStatPoint(StatTag, StatValue, true);
 	}
 }
 
@@ -161,20 +167,31 @@ void APlayerCharacter::LevelUp()
     UE_LOG(LogTemp, Log, TEXT("Level Up! New Level: %.0f | Available Stats Points: %.0f"), 
         CurrentLevel + 1.0f, CurrentPoints + PointsPerLevel);
 
+	// Set health and mana to max health and max mana
+	if (BasicAttributeSet)
+	{
+		AbilitySystemComponent->SetNumericAttributeBase(
+			UBasicAttributeSet::GetHealthAttribute(), BasicAttributeSet->GetMaxHealth());
+		AbilitySystemComponent->SetNumericAttributeBase(
+			UBasicAttributeSet::GetManaAttribute(), BasicAttributeSet->GetMaxMana());
+	}
 	SaveGame(CurrentSaveSlot);
 }
 
-bool APlayerCharacter::AddStatPoint(FGameplayTag StatTag, int32 Amount)
+bool APlayerCharacter::AddStatPoint(FGameplayTag StatTag, int32 Amount, bool isLoading)
 {
     if (!AbilitySystemComponent || !StatsAttributeSet || Amount <= 0) 
         return false;
 
 	const float AvailablePoints = StatsAttributeSet->GetAvailableStatPoints();
-	if (AvailablePoints < Amount)
+	if (!isLoading)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Not enough stat points available. Required: %d, Available: %.0f"),
-			Amount, AvailablePoints);
-		return false;
+		if (AvailablePoints < Amount)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Not enough stat points available. Required: %d, Available: %.0f"),
+				Amount, AvailablePoints);
+			return false;
+		}
 	}
 
 	TSubclassOf<UGameplayEffect>* EffectClass = StatPointChangeEffects.Find(StatTag);
@@ -184,21 +201,28 @@ bool APlayerCharacter::AddStatPoint(FGameplayTag StatTag, int32 Amount)
 		return false;
 	}
 
-	FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
-	EffectContext.AddSourceObject(this);
-	FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(
-		*EffectClass, 1.0f, EffectContext);
 
-	if (!SpecHandle.IsValid())
+	for (int32 i = 0; i < Amount; ++i)
 	{
-		UE_LOG(LogTemp, Error, TEXT("Failed to create GameplayEffect spec"));
-		return false;
-	}
+		FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
+		EffectContext.AddSourceObject(this);
+		FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(
+			*EffectClass, 1.0f, EffectContext);
 
-	SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag(FName("Data.Stats.ChangeAmount")), (float)Amount);
-	SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag(FName("Data.Stats.AvailableStatPoints")),-(float)Amount);
-	
-	AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+		if (!SpecHandle.IsValid()) continue;
+
+		if (!isLoading)
+		{
+			SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag(FName("Data.Stats.ChangeAmount")), 1.f);
+			SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag(FName("Data.Stats.AvailableStatPoints")), -1.f);
+		}
+		else
+		{
+			SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag(FName("Data.Stats.ChangeAmount")), 0.f);
+			SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag(FName("Data.Stats.AvailableStatPoints")), 0.f);
+		}
+		AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());		
+	}
 	
 	UE_LOG(LogTemp, Log, TEXT("Added %d point(s) to %s via GameplayEffect"), Amount, *StatTag.ToString());
 
@@ -357,6 +381,9 @@ void APlayerCharacter::AddExperience(int32 Amount)
 	CurrentExperience += Amount;
     
 	int32 RequiredXP = GetExperienceForNextLevel();
+
+	UE_LOG(LogTemp, Log, TEXT("Added %d XP. Current XP: %d / %d"), 
+		Amount, CurrentExperience, RequiredXP);
     
 	while (CurrentExperience >= RequiredXP && RequiredXP > 0)
 	{
@@ -399,13 +426,3 @@ FString APlayerCharacter::GetSlotNameFromEnum(EGameSaveSlots Slot) const
 	}
 }
 
-FGameplayTag APlayerCharacter::GetCurrentAttackTag() const
-{
-	if (CurrentAttackTag.IsValid())
-	{
-		return CurrentAttackTag;
-	}
-
-	// Fallback padrão
-	return FGameplayTag::RequestGameplayTag(TEXT("Ability.Attack.Melee"));
-}

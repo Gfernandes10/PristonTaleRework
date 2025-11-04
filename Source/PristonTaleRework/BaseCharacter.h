@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "AbilitySystemInterface.h"
 #include "AbilitySystemComponent.h"
+#include "AbilitySystemGlobals.h"
 #include "BaseCharacter.generated.h"
 
 UCLASS()
@@ -56,6 +57,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Effects|Basic")
 	TArray<TSubclassOf<UGameplayEffect>> BasicEffects;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAS|Abilities")
+	FGameplayTag CurrentAttackTag;
 
 protected:
 	// Called when the game starts or when spawned
@@ -77,10 +81,23 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	virtual class UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Character State")
 	void OnReviveStart();
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Character State")
 	void OnReviveComplete();
+	
+	UFUNCTION(BlueprintCallable, Category = "Ability|Tags")
+    void RemoveGameplayTagFromSelf(FGameplayTag TagToRemove);
+	
+	UFUNCTION(BlueprintCallable, Category = "GAS|Abilities")
+	FGameplayTag GetCurrentAttackTag() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Ability|Tags")
+	void AddGameplayTagToSelf(FGameplayTag TagToAdd);
+
+	UFUNCTION(BlueprintCallable, Category = "Combat|Attack")
+	bool ExecuteAttackOnTarget(AActor* TargetActor);
 };

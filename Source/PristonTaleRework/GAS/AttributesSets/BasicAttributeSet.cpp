@@ -92,8 +92,11 @@ void UBasicAttributeSet::PostAttributeChange(const FGameplayAttribute& Attribute
 bool UBasicAttributeSet::PreGameplayEffectExecute(FGameplayEffectModCallbackData& Data)
 {
 	bool bParentReturn = Super::PreGameplayEffectExecute(Data);
+	
 
+	
 	return bParentReturn;
+	
 }
 
 
@@ -171,5 +174,16 @@ void UBasicAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 				}					
 			}
 		}
+	}
+	
+	if (Data.EvaluatedData.Attribute == GetIncomingStatBonusAttribute())
+	{
+		float BonusValue = GetIncomingStatBonus();
+		float Multiplier = GetStatMultiplier();
+        
+		SetMinPowerAttack(GetMinPowerAttack() + (BonusValue * Multiplier));
+        
+		SetIncomingStatBonus(0.0f);
+		SetStatMultiplier(1.0f);
 	}
 }

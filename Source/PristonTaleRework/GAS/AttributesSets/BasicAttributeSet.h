@@ -61,6 +61,14 @@ public:
 	FGameplayAttributeData ApplyingDamage;
 	ATTRIBUTE_ACCESSORS_BASIC(UBasicAttributeSet, ApplyingDamage)
 
+	UPROPERTY(BlueprintReadOnly, Category = "GAS|Attributes|Meta Attributes")
+	FGameplayAttributeData IncomingStatBonus;
+	ATTRIBUTE_ACCESSORS_BASIC(UBasicAttributeSet, IncomingStatBonus)
+
+	UPROPERTY(BlueprintReadOnly, Category = "GAS|Attributes|Meta Attributes")
+	FGameplayAttributeData StatMultiplier;
+	ATTRIBUTE_ACCESSORS_BASIC(UBasicAttributeSet, StatMultiplier)
+
 public:
 	UFUNCTION()
 	void OnRep_Health(const FGameplayAttributeData& OldValue) const

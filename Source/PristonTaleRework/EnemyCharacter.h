@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "BaseCharacter.h"
+#include "PlayerCharacter.h"
 #include "EnemyCharacter.generated.h"
 
 /**
@@ -44,6 +45,10 @@ protected:
 	UPROPERTY(BlueprintAssignable, Category = "Combat")
 	FOnAttackFinished OnAttackFinished;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Progression|GiveXP")
+	int32 GivenExperiencePoints = 50;
+	
+
 
 	
 private:
@@ -71,6 +76,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "AI|Combat")
 	void StopFollowingPlayer();
 
-	protected:
+protected:
 	void OnDeathTagChanged(const FGameplayTag Tag, int32 NewCount);
+
+	UFUNCTION(BlueprintCallable, Category = "AI|Combat")
+	void GiveExperienceToPlayer()
+	{
+		if (APlayerCharacter* Player = Cast<APlayerCharacter>(TargetPlayer.Get()))
+		{
+			Player->AddExperience(GivenExperiencePoints);
+		}
+	}
 };
