@@ -5,6 +5,7 @@
 #include "Net/UnrealNetwork.h"
 #include "GameplayEffectExtension.h"
 #include "AbilitySystemComponent.h"
+#include "BasicAttributeSet.h"
 #include "PlayerCharacter.h"
 
 UStatsAttributeSet::UStatsAttributeSet()
@@ -38,15 +39,7 @@ void UStatsAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 	UAbilitySystemComponent* ASC = Data.Target.AbilityActorInfo->AbilitySystemComponent.Get();
 	if (!ASC) return;
 	
-	if (Attr == GetVitalityAttribute())
-	{
-		AActor* OwnerActor = Data.Target.AbilityActorInfo->OwnerActor.Get();
-		if (!OwnerActor) return;
-
-		APlayerCharacter* Player = Cast<APlayerCharacter>(OwnerActor);
-		// if (Player)
-		// {
-		// 	Player->UpdateBasicAttributesBaseOnStats();
-		// }
-	}
+	const UBasicAttributeSet* BasicAttrs = ASC->GetSet<UBasicAttributeSet>();
+	if (!BasicAttrs) return;
+	
 }

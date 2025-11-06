@@ -2,6 +2,8 @@
 
 
 #include "BaseCharacter.h"
+
+#include "PristonTaleRework.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GAS/AttributesSets/BasicAttributeSet.h"
@@ -72,6 +74,12 @@ void ABaseCharacter::ReviveCharacter()
     TagsToRemove.AddTag(FGameplayTag::RequestGameplayTag("Character.State.Dead"));
     AbilitySystemComponent->RemoveActiveEffectsWithTags(TagsToRemove);
     AbilitySystemComponent->RemoveLooseGameplayTag(FGameplayTag::RequestGameplayTag("Character.State.Dead"));
+
+	// Add combat active tag
+	AddGameplayTagToSelf(FGameplayTag::RequestGameplayTag("Combat.CanAttack.Enemy"));
+	
+
+	
 }
 
 // Called when the game starts or when spawned
@@ -148,4 +156,57 @@ UAbilitySystemComponent* ABaseCharacter::GetAbilitySystemComponent() const
 {
 	return AbilitySystemComponent;
 }
+void ABaseCharacter::AddGameplayTagToSelf(FGameplayTag TagToAdd)
+{
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+	{
+		ASC->AddLooseGameplayTag(TagToAdd);
+		UE_LOG(LogPristonTaleRework, Warning, TEXT("Tag adicionada: %s"), *TagToAdd.ToString());
+	}
+}
 
+bool ABaseCharacter::ExecuteAttackOnTarget(AActor* TargetActor)
+{
+	FGameplayEventData Payload;
+	Payload.Target = TargetActor;
+
+	FGameplayTag AbilityTag = GetCurrentAttackTag();
+
+	if (UAbilitySystemComponent* TargetASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(TargetActor))
+	{
+		static const FGameplayTag DeadTag = FGameplayTag::RequestGameplayTag(FName("Character.State.Dead"));
+		if (TargetASC->HasMatchingGameplayTag(DeadTag))
+		{
+			UE_LOG(LogPristonTaleRework, Warning, TEXT("Target está morto, não atacar: %s"), *TargetActor->GetName());
+			return false;
+		}
+	}
+	int32 NumActivated = AbilitySystemComponent->HandleGameplayEvent(AbilityTag, &Payload);
+
+	if (NumActivated > 0)
+	{
+		UE_LOG(LogPristonTaleRework, Log, TEXT("Ataque executado com sucesso! Abilities ativadas: %d"), NumActivated);
+		return true;
+	}
+	UE_LOG(LogPristonTaleRework, Warning, TEXT("Nenhuma ability foi ativada para a tag: %s"), *AbilityTag.ToString());
+	return false;
+}
+
+void ABaseCharacter::RemoveGameplayTagFromSelf(FGameplayTag TagToRemove)
+{
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+	{
+		ASC->RemoveLooseGameplayTag(TagToRemove);
+		UE_LOG(LogPristonTaleRework, Warning, TEXT("Tag removida: %s"), *TagToRemove.ToString());
+	}
+}
+FGameplayTag ABaseCharacter::GetCurrentAttackTag() const
+{
+	if (CurrentAttackTag.IsValid())
+	{
+		return CurrentAttackTag;
+	}
+
+	// Fallback padrão
+	return FGameplayTag::RequestGameplayTag(TEXT("Ability.Attack.Melee"));
+}

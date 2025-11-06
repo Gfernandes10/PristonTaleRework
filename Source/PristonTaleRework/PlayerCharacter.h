@@ -71,8 +71,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Save System")
 	EGameSaveSlots CurrentSaveSlot = EGameSaveSlots::SlotA;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAS|Abilities")
-	FGameplayTag CurrentAttackTag;
+
 	
 public:
 
@@ -89,7 +88,7 @@ public:
 	void LevelUp();
 
 	UFUNCTION(BlueprintCallable, Category = "Stats")
-	bool AddStatPoint(FGameplayTag StatTag, int32 Amount = 1);
+	bool AddStatPoint(FGameplayTag StatTag, int32 Amount = 1, bool isLoading = false);
 
 	UFUNCTION(BlueprintPure, Category = "Stats")
 	float GetAvailableStatPoints() const;
@@ -129,8 +128,7 @@ public:
 	float GetExperienceProgress() const; // Returns 0.0 to 1.0 for UI
 
 	// Getter para uso externo (controller)
-	UFUNCTION(BlueprintCallable, Category = "GAS|Abilities")
-	FGameplayTag GetCurrentAttackTag() const;
+
 
 private:
 	FActiveGameplayEffectHandle RegenEffectHandle;

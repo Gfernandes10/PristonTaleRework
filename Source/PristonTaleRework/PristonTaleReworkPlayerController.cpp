@@ -288,15 +288,22 @@ void APristonTaleReworkPlayerController::ExecuteSingleAttack(AActor* Target)
 		return;
 	}
 
-	UAbilitySystemComponent* ASC = PlayerChar->GetAbilitySystemComponent();
-	if (!ASC)
-	{
-		return;
-	}
-
 	FGameplayEventData Payload;
 	Payload.Target = Target;
 
-	FGameplayTag AbilityTag = PlayerChar->GetCurrentAttackTag();
-    ASC->HandleGameplayEvent(AbilityTag, &Payload);
+	bool AttackSuccess = PlayerChar->ExecuteAttackOnTarget(Target);
+	
+	/*FGameplayTag AbilityTag = PlayerChar->GetCurrentAttackTag();
+
+	if (UAbilitySystemComponent* TargetASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(Target))
+	{
+		static const FGameplayTag DeadTag = FGameplayTag::RequestGameplayTag(FName("Character.State.Dead"));
+		if (TargetASC->HasMatchingGameplayTag(DeadTag))
+		{
+			UE_LOG(LogPristonTaleRework, Warning, TEXT("Target está morto, não atacar: %s"), *Target->GetName());
+			StopAutoAttack(); // Opcional: parar auto-attack se estava ativo
+			return;
+		}
+	}
+    ASC->HandleGameplayEvent(AbilityTag, &Payload);*/
 }

@@ -167,9 +167,10 @@ void AEnemyCharacter::ExecuteAttack()
 				UE_LOG(LogTemp, Warning, TEXT("⚠️ Ability já está ativa! Cancelando..."));
                 
 				// Cancelar a ability ativa
-				AbilitySystemComponent->CancelAbilityHandle(Spec.Handle);
-                
-				// Aguardar 1 frame para garantir que foi cancelada
+				// AbilitySystemComponent->CancelAbilityHandle(Spec.Handle);
+				
+				
+				/*// Aguardar 1 frame para garantir que foi cancelada
 				FTimerHandle DelayHandle;
 				GetWorld()->GetTimerManager().SetTimer(
 					DelayHandle,
@@ -183,7 +184,7 @@ void AEnemyCharacter::ExecuteAttack()
 					},
 					0.01f,
 					false
-				);
+				);*/
                 
 				return;
 			}
@@ -191,10 +192,11 @@ void AEnemyCharacter::ExecuteAttack()
 	}
 
 	// Se não estava ativa, ativar normalmente
-	FGameplayEventData Payload;
-	Payload.Target = TargetPlayer.Get();
-	Payload.EventTag = AttackAbilityTag;
-	AbilitySystemComponent->HandleGameplayEvent(AttackAbilityTag, &Payload);
+	// FGameplayEventData Payload;
+	// Payload.Target = TargetPlayer.Get();
+	// Payload.EventTag = AttackAbilityTag;
+	// AbilitySystemComponent->HandleGameplayEvent(AttackAbilityTag, &Payload);
+	ExecuteAttackOnTarget(TargetPlayer.Get());
 }
 void AEnemyCharacter::OnAttackTagChanged(const FGameplayTag Tag, int32 NewCount)
 {
