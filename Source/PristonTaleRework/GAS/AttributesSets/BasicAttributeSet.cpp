@@ -59,6 +59,14 @@ void UBasicAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute,
 void UBasicAttributeSet::PostAttributeChange(const FGameplayAttribute& Attribute, float OldValue, float NewValue)
 {
     Super::PostAttributeChange(Attribute, OldValue, NewValue);
+
+	UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent();
+	if (!ASC) return;
+
+	// Verifica se é um player
+	AActor* OwnerActor = ASC->GetOwnerActor();
+	APawn* OwnerPawn = Cast<APawn>(OwnerActor);
+	bool bIsPlayer = OwnerPawn && OwnerPawn->IsPlayerControlled();
 	
     if (Attribute == GetMaxHealthAttribute())
     {
@@ -68,8 +76,7 @@ void UBasicAttributeSet::PostAttributeChange(const FGameplayAttribute& Attribute
 
         float NewHealth = FMath::Clamp(NewValue * HealthPercentage, 0.0f, NewValue);
     	SetHealth(NewHealth);
-
-        UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent();
+    	
         static const FGameplayTag HealthTag = FGameplayTag::RequestGameplayTag(FName("Character.State.Regen.Health"));
         ManageRegenTag(ASC, HealthTag, GetHealth() < NewValue);
     }
@@ -81,10 +88,19 @@ void UBasicAttributeSet::PostAttributeChange(const FGameplayAttribute& Attribute
 
         float NewMana = FMath::Clamp(NewValue * ManaPercentage, 0.0f, NewValue);
     	SetMana(NewMana);
-
-        UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent();
+    	
         static const FGameplayTag ManaTag = FGameplayTag::RequestGameplayTag(FName("Character.State.Regen.Mana"));
         ManageRegenTag(ASC, ManaTag, GetMana() < NewValue);
+    }
+    else if (Attribute == GetHealthAttribute() && bIsPlayer && OldValue > NewValue)
+    {
+    	static const FGameplayTag HealthTag = FGameplayTag::RequestGameplayTag(FName("Character.State.Regen.Health"));
+    	ManageRegenTag(ASC, HealthTag, GetHealth() < GetMaxHealth());
+    }
+    else if (Attribute == GetManaAttribute() && bIsPlayer && OldValue > NewValue)
+    {
+    	static const FGameplayTag ManaTag = FGameplayTag::RequestGameplayTag(FName("Character.State.Regen.Mana"));
+    	ManageRegenTag(ASC, ManaTag, GetMana() < GetMaxMana());
     }
 }
 
