@@ -162,7 +162,13 @@ void UGA_MeleeAttack::ExecuteAttack()
 		UAbilityTask_PlayMontageAndWait* Task = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
 			this,
 			NAME_None,
-			ComboMontageToPlay
+			ComboMontageToPlay,
+			1.0f,
+			NAME_None,
+			false,
+			0.0f,
+			0.0f,
+			true
 		);
 
 		if (Task)

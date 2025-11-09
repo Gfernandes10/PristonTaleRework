@@ -120,7 +120,13 @@ void UGA_AreaAttack::ExecuteAttack()
         UAbilityTask_PlayMontageAndWait* Task = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
             this,
             NAME_None,
-            AttackMontage
+            AttackMontage,
+            1.0f,
+            NAME_None,
+            false,
+            0.0f,
+            0.0f,
+            true
         );
 
         if (Task)
