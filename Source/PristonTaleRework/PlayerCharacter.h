@@ -10,6 +10,19 @@
 /**
  * 
  */
+
+USTRUCT(BlueprintType)
+struct FAbilityUnlockData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	FGameplayTag AbilityTag;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	TSubclassOf<UGameplayAbility> AbilityClass;
+};
+
 UCLASS()
 class PRISTONTALEREWORK_API APlayerCharacter : public ABaseCharacter
 {
@@ -70,9 +83,14 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Save System")
 	EGameSaveSlots CurrentSaveSlot = EGameSaveSlots::SlotA;
-
-
 	
+	UPROPERTY(BlueprintReadOnly, Category = "Abilities")
+	TArray<FGameplayAbilitySpecHandle> AbilitySpecHandles;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Abilities")
+	TMap<int32, FAbilityUnlockData> LevelUnlockableAbilities;
+	
+
 public:
 
 	/** Constructor */
@@ -127,12 +145,32 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Experience")
 	float GetExperienceProgress() const; // Returns 0.0 to 1.0 for UI
 
-	// Getter para uso externo (controller)
+	/** Adiciona uma tag de habilidade desbloqueada e salva o jogo */
+	UFUNCTION(BlueprintCallable, Category = "Abilities")
+	void AddUnlockedAbility(FGameplayTag Tag, TSubclassOf<UGameplayAbility> AbilityClass);
 
+	/** Remove uma tag de habilidade desbloqueada e salva o jogo */
+	UFUNCTION(BlueprintCallable, Category = "Abilities")
+	void RemoveUnlockedAbilityTag(FGameplayTag Tag);
+
+	/** Verifica se uma tag de habilidade está desbloqueada */
+	UFUNCTION(BlueprintPure, Category = "Abilities")
+	bool HasUnlockedAbilityTag(FGameplayTag Tag) const;
+	
+	// Verifica e aplica tags de habilidade baseadas no nível atual
+	UFUNCTION(BlueprintCallable, Category = "Abilities")
+	void CheckAndUnlockAbilitiesByLevel(bool bIsLoading = false);
+	
+	UFUNCTION(BlueprintCallable, Category = "Abilities")
+	FGameplayAbilitySpecHandle GrantAbilityAndNotify(TSubclassOf<UGameplayAbility> AbilityClass);
 
 private:
 	FActiveGameplayEffectHandle RegenEffectHandle;
 
 	FString GetSlotNameFromEnum(EGameSaveSlots Slot) const;
+
+	void ApplySavedAbilityTags(const TArray<FString>& SavedTags);
+
+	int32 LastProcessedLevel = 0;
 	
 };
