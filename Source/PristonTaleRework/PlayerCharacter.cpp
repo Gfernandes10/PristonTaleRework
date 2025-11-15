@@ -172,6 +172,13 @@ void APlayerCharacter::LevelUp()
 	}
 
 	CheckAndUnlockAbilitiesByLevel(false);
+
+	FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("Event.LevelUp"));
+	FGameplayEventData EventData;
+	EventData.EventMagnitude = StatsAttributeSet->GetLevel();
+	EventData.Instigator = this;
+	EventData.Target = this;
+	AbilitySystemComponent->HandleGameplayEvent(EventTag, &EventData);
 	
 	SaveGame(CurrentSaveSlot);
 }
@@ -341,6 +348,12 @@ void APlayerCharacter::LoadGame(EGameSaveSlots Slot)
 		ApplySavedAbilityTags(LoadGameInstance->UnlockedAbilityTags);
 
 		CheckAndUnlockAbilitiesByLevel(true);
+
+		FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("Event.LoadGame.Finished"));
+		FGameplayEventData EventData;
+		EventData.Instigator = this;
+		EventData.Target = this;
+		AbilitySystemComponent->HandleGameplayEvent(EventTag, &EventData);
 		
 
 		UE_LOG(LogTemp, Log, TEXT("Game loaded successfully!"));
@@ -417,6 +430,13 @@ void APlayerCharacter::AddExperience(int32 Amount)
 		RequiredXP = GetExperienceForNextLevel();
 	}
 
+	FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("Event.GainedExperience"));
+	FGameplayEventData EventData;
+	EventData.EventMagnitude = Amount;
+	EventData.Instigator = this;
+	EventData.Target = this;
+	AbilitySystemComponent->HandleGameplayEvent(EventTag, &EventData);
+	
 	SaveGame(CurrentSaveSlot);
 }
 
@@ -564,6 +584,12 @@ void APlayerCharacter::CheckAndUnlockAbilitiesByLevel(bool bIsLoading)
 
 				UE_LOG(LogTemp, Log, TEXT("Loaded ability tag for level %d: %s"),
 					Pair.Key, *Pair.Value.AbilityTag.ToString());
+				FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("Event.Abilities.Unlocked"));
+				FGameplayEventData EventData;
+				EventData.EventTag = Pair.Value.AbilityTag;
+				EventData.Instigator = this;
+				EventData.Target = this;
+				AbilitySystemComponent->HandleGameplayEvent(EventTag, &EventData);
 			}
 		}
 		LastProcessedLevel = CurrentLevel;

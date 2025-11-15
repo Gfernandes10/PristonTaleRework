@@ -7,7 +7,7 @@
 #include "Blueprint/AIBlueprintHelperLibrary.h"
 #include "NiagaraSystem.h"
 #include "NiagaraFunctionLibrary.h"
-#include "PlayerCharacter.h"
+
 #include "Engine/World.h"
 #include "EnhancedInputComponent.h"
 #include "InputActionValue.h"
@@ -41,6 +41,8 @@ void APristonTaleReworkPlayerController::SetupInputComponent()
 			Subsystem->AddMappingContext(DefaultMappingContext, 0);
 		}
 
+		PlayerCharObject = Cast<APlayerCharacter>(GetPawn());
+		
 		// Set up action bindings
 		if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(InputComponent))
 		{
