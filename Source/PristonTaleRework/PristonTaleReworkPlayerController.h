@@ -67,6 +67,11 @@ protected:
 	UPROPERTY(BlueprintReadOnly)
 	APlayerCharacter* PlayerCharObject;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta=(AllowPrivateAccess = "true"))
+	class UInputMappingContext* PlayerAbilitiesMappingContext;
+
+	
+
 public:
 
 	/** Constructor */
@@ -95,6 +100,7 @@ protected:
 	void StopAutoAttack();
 	void CheckAutoAttackConditions();
 	void ExecuteSingleAttack(AActor* Target);
+	bool CheckIfCurrentAbilityIsBuff();
 };
 
 

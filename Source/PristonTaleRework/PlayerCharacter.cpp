@@ -70,6 +70,9 @@ void APlayerCharacter::UpdateBasicAttributesBaseOnStats()
 
 		AddStatPoint(StatTag, StatValue, true);
 	}
+
+	AbilitySystemComponent->SetNumericAttributeBase(UBasicAttributeSet::GetHealthAttribute(), BasicAttributeSet->GetMaxHealth());
+	AbilitySystemComponent->SetNumericAttributeBase(UBasicAttributeSet::GetManaAttribute(), BasicAttributeSet->GetMaxMana());
 }
 
 void APlayerCharacter::BeginPlay()
@@ -93,7 +96,9 @@ void APlayerCharacter::BeginPlay()
 			AbilitySystemComponent->SetNumericAttributeBase(
 				UStatsAttributeSet::GetAgilityAttribute(), InitialAgility);
 			AbilitySystemComponent->SetNumericAttributeBase(
-				UStatsAttributeSet::GetLevelAttribute(), InitialLevel);			
+				UStatsAttributeSet::GetLevelAttribute(), InitialLevel);
+			AbilitySystemComponent->SetNumericAttributeBase(
+				UStatsAttributeSet::GetAvailableStatPointsAttribute(), 0.f);
 		}	
 
 	}
@@ -129,11 +134,28 @@ void APlayerCharacter::BeginPlay()
         }
     }
 
-	// // Grant Tier 1 Abilities
-	// for (TSubclassOf<UGameplayAbility> AbilityClass : Tier1Abilities)
-	// {
-	// 	GrantAbilityAndNotify(AbilityClass);
-	// }
+	if (AbilitySystemComponent)
+	{
+
+		CheckAndUnlockAbilitiesByLevel(true);
+		//FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("Event.Abilities.CurrentAttackTagChanged"));
+
+		FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("Event.Abilities.CurrentAttackTagChanged"));
+
+        
+		AbilitySystemComponent->GenericGameplayEventCallbacks.FindOrAdd(EventTag)
+			.AddUObject(this, &APlayerCharacter::OnAttackTagChanged);
+		
+		//Give player identification tag: Combat.CanAttack.Player
+		AbilitySystemComponent->AddLooseGameplayTag(
+			FGameplayTag::RequestGameplayTag(FName("Combat.CanAttack.Player")));
+	}
+	
+	FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("Event.LoadGame.Finished"));
+	FGameplayEventData EventData;
+	EventData.Instigator = this;
+	EventData.Target = this;
+	AbilitySystemComponent->HandleGameplayEvent(EventTag, &EventData);
 	
 }
 
@@ -471,7 +493,7 @@ FString APlayerCharacter::GetSlotNameFromEnum(EGameSaveSlots Slot) const
 	}
 }
 
-FGameplayAbilitySpecHandle APlayerCharacter::GrantAbilityAndNotify(TSubclassOf<UGameplayAbility> AbilityClass)
+FGameplayAbilitySpecHandle APlayerCharacter::GrantAbilityAndNotify(int32 Level, TSubclassOf<UGameplayAbility> AbilityClass)
 {
 	if (!AbilitySystemComponent || !AbilityClass)
 	{
@@ -480,7 +502,7 @@ FGameplayAbilitySpecHandle APlayerCharacter::GrantAbilityAndNotify(TSubclassOf<U
 
 	// Concede a ability
 	FGameplayAbilitySpecHandle SpecHandle = AbilitySystemComponent->GiveAbility(
-		FGameplayAbilitySpec(AbilityClass, 1, INDEX_NONE, this)
+		FGameplayAbilitySpec(AbilityClass, 1, Level, this)
 	);
 
 	// Armazena o handle
@@ -501,7 +523,24 @@ FGameplayAbilitySpecHandle APlayerCharacter::GrantAbilityAndNotify(TSubclassOf<U
 	return SpecHandle;
 }
 
-void APlayerCharacter::AddUnlockedAbility(FGameplayTag Tag, TSubclassOf<UGameplayAbility> AbilityClass)
+void APlayerCharacter::OnAttackTagChanged(const FGameplayEventData* Payload)
+{
+	if (!Payload || !Payload->InstigatorTags.IsValid()) return;
+
+	// Procura pela tag de ataque nas InstigatorTags
+	for (const FGameplayTag& Tag : Payload->InstigatorTags)
+	{
+		if (Tag.MatchesTag(FGameplayTag::RequestGameplayTag(FName("Ability.Attack"))))
+		{
+			CurrentAttackTag = Tag;
+			UE_LOG(LogTemp, Log, TEXT("CurrentAttackTag updated to: %s"), 
+				*CurrentAttackTag.ToString());
+			break;
+		}
+	}
+}
+
+void APlayerCharacter::AddUnlockedAbility(int32 Level, FGameplayTag Tag, TSubclassOf<UGameplayAbility> AbilityClass)
 {
 	if (!AbilitySystemComponent || !Tag.IsValid())
 	{
@@ -523,7 +562,7 @@ void APlayerCharacter::AddUnlockedAbility(FGameplayTag Tag, TSubclassOf<UGamepla
 		const UGameplayAbility* AbilityCDO = AbilityClass->GetDefaultObject<UGameplayAbility>();
 		if (AbilityCDO && AbilityCDO->AbilityTags.HasTag(Tag))
 		{
-			GrantAbilityAndNotify(AbilityClass);
+			GrantAbilityAndNotify(Level, AbilityClass);
 			UE_LOG(LogTemp, Log, TEXT("Granted ability for tag: %s"), *Tag.ToString());
 		}
 	}
@@ -580,7 +619,7 @@ void APlayerCharacter::CheckAndUnlockAbilitiesByLevel(bool bIsLoading)
 		{
 			if (Pair.Key <= CurrentLevel && Pair.Value.AbilityTag.IsValid())
 			{
-				AddUnlockedAbility(Pair.Value.AbilityTag, Pair.Value.AbilityClass);
+				AddUnlockedAbility(Pair.Key, Pair.Value.AbilityTag, Pair.Value.AbilityClass);
 
 				UE_LOG(LogTemp, Log, TEXT("Loaded ability tag for level %d: %s"),
 					Pair.Key, *Pair.Value.AbilityTag.ToString());
@@ -604,7 +643,7 @@ void APlayerCharacter::CheckAndUnlockAbilitiesByLevel(bool bIsLoading)
 			if (UnlockData->AbilityTag.IsValid() && 
 				!AbilitySystemComponent->HasMatchingGameplayTag(UnlockData->AbilityTag))
 			{
-				AddUnlockedAbility(UnlockData->AbilityTag, UnlockData->AbilityClass);
+				AddUnlockedAbility(Level, UnlockData->AbilityTag, UnlockData->AbilityClass);
 
 
 				UE_LOG(LogTemp, Log, TEXT("Unlocked new ability at level %d: %s"),

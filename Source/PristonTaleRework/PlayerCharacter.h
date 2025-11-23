@@ -21,6 +21,7 @@ struct FAbilityUnlockData
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	TSubclassOf<UGameplayAbility> AbilityClass;
+	
 };
 
 UCLASS()
@@ -89,7 +90,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Abilities")
 	TMap<int32, FAbilityUnlockData> LevelUnlockableAbilities;
-	
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Abilities")
+	UDataTable* AbilitiesTable;
 
 public:
 
@@ -147,7 +150,7 @@ public:
 
 	/** Adiciona uma tag de habilidade desbloqueada e salva o jogo */
 	UFUNCTION(BlueprintCallable, Category = "Abilities")
-	void AddUnlockedAbility(FGameplayTag Tag, TSubclassOf<UGameplayAbility> AbilityClass);
+	void AddUnlockedAbility(int32 Level, FGameplayTag Tag, TSubclassOf<UGameplayAbility> AbilityClass);
 
 	/** Remove uma tag de habilidade desbloqueada e salva o jogo */
 	UFUNCTION(BlueprintCallable, Category = "Abilities")
@@ -162,7 +165,9 @@ public:
 	void CheckAndUnlockAbilitiesByLevel(bool bIsLoading = false);
 	
 	UFUNCTION(BlueprintCallable, Category = "Abilities")
-	FGameplayAbilitySpecHandle GrantAbilityAndNotify(TSubclassOf<UGameplayAbility> AbilityClass);
+	FGameplayAbilitySpecHandle GrantAbilityAndNotify(int32 Level, TSubclassOf<UGameplayAbility> AbilityClass);
+	
+	void OnAttackTagChanged(const FGameplayEventData* Payload);
 
 private:
 	FActiveGameplayEffectHandle RegenEffectHandle;

@@ -39,6 +39,11 @@ void APristonTaleReworkPlayerController::SetupInputComponent()
 		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
 		{
 			Subsystem->AddMappingContext(DefaultMappingContext, 0);
+
+			if (PlayerAbilitiesMappingContext)
+			{
+				Subsystem->AddMappingContext(PlayerAbilitiesMappingContext, 1);
+			}
 		}
 
 		PlayerCharObject = Cast<APlayerCharacter>(GetPawn());
@@ -169,6 +174,7 @@ bool APristonTaleReworkPlayerController::VerifyHitResult(FHitResult& HitResult)
 		if (UAbilitySystemComponent* TargetASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(Hit.GetActor()))
 		{
 			static const FGameplayTag CombatCanAttackEnemyTag = FGameplayTag::RequestGameplayTag(FName("Combat.CanAttack.Enemy"));
+			
 			if (TargetASC->HasMatchingGameplayTag(CombatCanAttackEnemyTag))
 			{
 				HitResult = Hit;
@@ -188,6 +194,18 @@ void APristonTaleReworkPlayerController::OnRightMouseClick()
 		StopAutoAttack();
 	}
 
+	APlayerCharacter* PlayerChar = GetPawn<APlayerCharacter>();
+	if (PlayerChar)
+	{
+		if (CheckIfCurrentAbilityIsBuff())
+		{
+			ExecuteSingleAttack(PlayerChar);
+			return;
+		}
+	}
+	
+	// static const FGameplayTag CombatCanAttackPlayerTag = FGameplayTag::RequestGameplayTag(FName("Combat.CanAttack.Player"));
+	
 	FHitResult HitResult;
 	if (VerifyHitResult(HitResult)) return;
 
@@ -255,15 +273,6 @@ void APristonTaleReworkPlayerController::CheckAutoAttackConditions()
 	}
 	
 	AActor* Target = AutoAttackTarget.Get();
-    
-	// Opção 1: Verifiy if target still has "CanAttack.Enemy" tag
-	// if (!Target->ActorHasTag("Combat.CanAttack.Enemy"))
-	// {
-	// 	UE_LOG(LogPristonTaleRework, Warning, TEXT("Target is no longer attackable, stopping auto-attack"));
-	// 	StopAutoAttack();
-	// 	return;
-	// }
-
 
 	APlayerCharacter* PlayerChar = GetPawn<APlayerCharacter>();
 	if (UAbilitySystemComponent* ASC = PlayerChar->GetAbilitySystemComponent())
@@ -294,18 +303,50 @@ void APristonTaleReworkPlayerController::ExecuteSingleAttack(AActor* Target)
 	Payload.Target = Target;
 
 	bool AttackSuccess = PlayerChar->ExecuteAttackOnTarget(Target);
-	
-	/*FGameplayTag AbilityTag = PlayerChar->GetCurrentAttackTag();
 
-	if (UAbilitySystemComponent* TargetASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(Target))
+}
+
+bool APristonTaleReworkPlayerController::CheckIfCurrentAbilityIsBuff()
+{
+	APlayerCharacter* PlayerChar = GetPawn<APlayerCharacter>();
+	if (!PlayerChar)
 	{
-		static const FGameplayTag DeadTag = FGameplayTag::RequestGameplayTag(FName("Character.State.Dead"));
-		if (TargetASC->HasMatchingGameplayTag(DeadTag))
+		return false;
+	}
+
+	FGameplayTag CurrentAttackTag = PlayerChar->GetCurrentAttackTag();
+	if (!CurrentAttackTag.IsValid())
+	{
+		return false;
+	}
+
+	UAbilitySystemComponent* ASC = PlayerChar->GetAbilitySystemComponent();
+	if (!ASC)
+	{
+		return false;
+	}
+	
+	TArray<FGameplayAbilitySpec*> ActivatableAbilities;
+	ASC->GetActivatableGameplayAbilitySpecsByAllMatchingTags(
+		FGameplayTagContainer(CurrentAttackTag),
+		ActivatableAbilities
+	);
+
+	for (FGameplayAbilitySpec* Spec : ActivatableAbilities)
+	{
+		if (Spec && Spec->Ability)
 		{
-			UE_LOG(LogPristonTaleRework, Warning, TEXT("Target está morto, não atacar: %s"), *Target->GetName());
-			StopAutoAttack(); // Opcional: parar auto-attack se estava ativo
-			return;
+			// Verifica se a ability tem a tag de buff
+			static const FGameplayTag BuffTag = FGameplayTag::RequestGameplayTag(FName("Ability.Info.Buff"));
+            
+			if (Spec->Ability->AbilityTags.HasTag(BuffTag))
+			{
+				UE_LOG(LogPristonTaleRework, Log, TEXT("Ability %s is a buff"), 
+					*Spec->Ability->GetName());
+				return true;
+			}
 		}
 	}
-    ASC->HandleGameplayEvent(AbilityTag, &Payload);*/
+
+	return false;
 }
