@@ -5,11 +5,13 @@
 #include "CoreMinimal.h"
 #include "Templates/SubclassOf.h"
 #include "GameFramework/PlayerController.h"
+#include "PlayerCharacter.h"
 #include "PristonTaleReworkPlayerController.generated.h"
 
 class UNiagaraSystem;
 class UInputMappingContext;
 class UInputAction;
+
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -62,6 +64,14 @@ protected:
 	/** Time that the click input has been pressed */
 	float FollowTime = 0.0f;
 
+	UPROPERTY(BlueprintReadOnly)
+	APlayerCharacter* PlayerCharObject;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta=(AllowPrivateAccess = "true"))
+	class UInputMappingContext* PlayerAbilitiesMappingContext;
+
+	
+
 public:
 
 	/** Constructor */
@@ -90,6 +100,7 @@ protected:
 	void StopAutoAttack();
 	void CheckAutoAttackConditions();
 	void ExecuteSingleAttack(AActor* Target);
+	bool CheckIfCurrentAbilityIsBuff();
 };
 
 
