@@ -280,3 +280,14 @@ void UGA_MeleeAttack::RestoreCollision()
 		}
 	}
 }
+
+// GA_MeleeAttack.cpp
+bool UGA_MeleeAttack::HasAbilityTag(FGameplayTag TagToCheck) const
+{
+	return AbilityTags.HasTag(TagToCheck);
+}
+
+FGameplayTagContainer UGA_MeleeAttack::GetAbilityTags() const
+{
+	return AbilityTags;
+}

@@ -57,4 +57,7 @@ public:
 	// Playe Progression
 	UPROPERTY(VisibleAnywhere, Category = "Experience")
 	int32 CurrentExperience = 0;
+
+	UPROPERTY(VisibleAnywhere, Category = "Tags")
+	TArray<FString> UnlockedAbilityTags;
 };
