@@ -91,10 +91,12 @@ jobs:
 
     #Step 2: Download large asstes (Git LFS 
     - name: Pull LFS Assets
+      shell: pwsh
       run: git lfs pull
 
     #Step 3: Clean old builds
     - name: Clean Old Builds
+      shell: pwsh
       run: |
         Write-Host "Cleaning old builds..."
         
@@ -118,6 +120,7 @@ jobs:
 
     #Step 4: Compile Unreal Project
     - name: Compile Unreal Project
+      shell: pwsh
       run: |
         Write-Host "Starting compilation..."
         Write-Host "Project: $env:PROJECT_PATH"
@@ -137,5 +140,118 @@ jobs:
         
         Write-Host "✅ Compilation completed!"
 
+    #Step 5: Execute automated tests (if any)
+    - name: Run Automated Tests
+      shell: pwsh
+      run: |
+        Write-Host "Running automated tests..."
+        
+        & "$env:UE_ROOT\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" `
+          "$env:PROJECT_PATH" `
+          -ExecCmds="Automation RunTests Now System+Project" `
+          -TestExit="Automation Test Queue Empty" `
+          -ReportOutputPath="${{ github.workspace }}\TestResults" `
+          -NullRHI `
+          -Unattended `
+          -NoSplash `
+          -Log
+        
+        Write-Host "✅ Tests completed!"
 
-  
+    #Step 6: Upload test results
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results-${{ github.sha }}
+        path: TestResults/
+        retention-days: 7
+  #Job3: Deployment (optional, can be added later)
+  package:
+    name: Package Project
+    needs: build
+    if: github.ref == 'refs/heads/Stage'
+    runs-on: self-hosted
+    timeout-minutes: 180
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      with:
+        lfs: true
+        submodules: recursive
+
+    - name : Pull LFS Assets
+      shell: pwsh
+      run: git lfs pull
+    
+    - name: Create Build Shipping
+      run: |
+        Write-Host "📦 Creating final build..."
+        
+        & "$env:UE_ROOT\Engine\Build\BatchFiles\RunUAT.bat" `
+          BuildCookRun `
+          -project="$env:PROJECT_PATH" `
+          -platform=Win64 `
+          -clientconfig=Shipping `
+          -serverconfig=Shipping `
+          -cook `
+          -build `
+          -stage `
+          -pak `
+          -archive `
+          -archivedirectory="${{ github.workspace }}\Build" `
+          -utf8output `
+          -noP4
+        
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error "❌ Packaging failed!"
+          exit 1
+        }
+        
+        Write-Host "✅ Build created successfully!"
+    
+    - name: Upload Final Build
+      uses: actions/upload-artifact@v4
+      with:
+        name: PristonTaleRework-Win64-${{ github.sha }}
+        path: Build/WindowsNoEditor/
+        retention-days: 30
+        compression-level: 6
+
+
+
+    steps:
+    - name: Download Code
+      uses: actions/checkout@v4
+
+    - name: Package Unreal Project
+      shell: pwsh
+      run: |
+        Write-Host "Packaging project..."
+        
+        & "$env:UE_ROOT\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" `
+          "$env:PROJECT_PATH" `
+          -run=CookAndPackage `
+          -TargetPlatform=Win64 `
+          -Build `
+          -Package `
+          -CrashReporter `
+          -UTF8Output `
+          -NoLogTimes `
+          -Compressed `
+          -Stage `
+          -Archive `
+          -ArchiveDirectory="${{ github.workspace }}\PackagedBuilds"
+        
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error "❌ Packaging failed!"
+          exit 1
+        }
+        
+        Write-Host "✅ Packaging completed!"
+
+    - name: Upload Packaged Build
+      uses: actions/upload-artifact@v4
+      with:
+        name: packaged-build-${{ github.sha }}
