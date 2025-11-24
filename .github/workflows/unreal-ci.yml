@@ -91,12 +91,12 @@ jobs:
 
     #Step 2: Download large asstes (Git LFS 
     - name: Pull LFS Assets
-      shell: pwsh
+      shell: powershell
       run: git lfs pull
 
     #Step 3: Clean old builds
     - name: Clean Old Builds
-      shell: pwsh
+      shell: powershell
       run: |
         Write-Host "Cleaning old builds..."
         
@@ -120,7 +120,7 @@ jobs:
 
     #Step 4: Compile Unreal Project
     - name: Compile Unreal Project
-      shell: pwsh
+      shell: powershell
       run: |
         Write-Host "Starting compilation..."
         Write-Host "Project: $env:PROJECT_PATH"
@@ -142,7 +142,7 @@ jobs:
 
     #Step 5: Execute automated tests (if any)
     - name: Run Automated Tests
-      shell: pwsh
+      shell: powershell
       run: |
         Write-Host "Running automated tests..."
         
@@ -182,7 +182,7 @@ jobs:
         submodules: recursive
 
     - name : Pull LFS Assets
-      shell: pwsh
+      shell: powershell
       run: git lfs pull
     
     - name: Create Build Shipping
