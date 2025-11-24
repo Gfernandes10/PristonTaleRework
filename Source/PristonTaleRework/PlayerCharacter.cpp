@@ -70,6 +70,9 @@ void APlayerCharacter::UpdateBasicAttributesBaseOnStats()
 
 		AddStatPoint(StatTag, StatValue, true);
 	}
+
+	AbilitySystemComponent->SetNumericAttributeBase(UBasicAttributeSet::GetHealthAttribute(), BasicAttributeSet->GetMaxHealth());
+	AbilitySystemComponent->SetNumericAttributeBase(UBasicAttributeSet::GetManaAttribute(), BasicAttributeSet->GetMaxMana());
 }
 
 void APlayerCharacter::BeginPlay()
@@ -93,7 +96,9 @@ void APlayerCharacter::BeginPlay()
 			AbilitySystemComponent->SetNumericAttributeBase(
 				UStatsAttributeSet::GetAgilityAttribute(), InitialAgility);
 			AbilitySystemComponent->SetNumericAttributeBase(
-				UStatsAttributeSet::GetLevelAttribute(), InitialLevel);			
+				UStatsAttributeSet::GetLevelAttribute(), InitialLevel);
+			AbilitySystemComponent->SetNumericAttributeBase(
+				UStatsAttributeSet::GetAvailableStatPointsAttribute(), 0.f);
 		}	
 
 	}
@@ -129,16 +134,28 @@ void APlayerCharacter::BeginPlay()
         }
     }
 
-	// Grant Tier 1 Abilities
-	for (TSubclassOf<UGameplayAbility> AbilityClass : Tier1Abilities)
+	if (AbilitySystemComponent)
 	{
-		if (AbilityClass)
-		{
-			AbilitySystemComponent->GiveAbility(
-				FGameplayAbilitySpec(AbilityClass, 1, INDEX_NONE, this)
-				);
-		}
+
+		CheckAndUnlockAbilitiesByLevel(true);
+		//FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("Event.Abilities.CurrentAttackTagChanged"));
+
+		FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("Event.Abilities.CurrentAttackTagChanged"));
+
+        
+		AbilitySystemComponent->GenericGameplayEventCallbacks.FindOrAdd(EventTag)
+			.AddUObject(this, &APlayerCharacter::OnAttackTagChanged);
+		
+		//Give player identification tag: Combat.CanAttack.Player
+		AbilitySystemComponent->AddLooseGameplayTag(
+			FGameplayTag::RequestGameplayTag(FName("Combat.CanAttack.Player")));
 	}
+	
+	FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("Event.LoadGame.Finished"));
+	FGameplayEventData EventData;
+	EventData.Instigator = this;
+	EventData.Target = this;
+	AbilitySystemComponent->HandleGameplayEvent(EventTag, &EventData);
 	
 }
 
@@ -175,6 +192,16 @@ void APlayerCharacter::LevelUp()
 		AbilitySystemComponent->SetNumericAttributeBase(
 			UBasicAttributeSet::GetManaAttribute(), BasicAttributeSet->GetMaxMana());
 	}
+
+	CheckAndUnlockAbilitiesByLevel(false);
+
+	FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("Event.LevelUp"));
+	FGameplayEventData EventData;
+	EventData.EventMagnitude = StatsAttributeSet->GetLevel();
+	EventData.Instigator = this;
+	EventData.Target = this;
+	AbilitySystemComponent->HandleGameplayEvent(EventTag, &EventData);
+	
 	SaveGame(CurrentSaveSlot);
 }
 
@@ -226,7 +253,10 @@ bool APlayerCharacter::AddStatPoint(FGameplayTag StatTag, int32 Amount, bool isL
 	
 	UE_LOG(LogTemp, Log, TEXT("Added %d point(s) to %s via GameplayEffect"), Amount, *StatTag.ToString());
 
-	SaveGame(CurrentSaveSlot);
+	if (!isLoading)
+	{
+		SaveGame(CurrentSaveSlot);
+	}
 	return true;
 	
 }
@@ -262,6 +292,24 @@ void APlayerCharacter::SaveGame(EGameSaveSlots Slot)
 		SaveGameInstance->PlayerPosition = GetActorLocation();
 		SaveGameInstance->PlayerRotation = GetActorRotation();
 
+		// Save unlocked ability tags
+		SaveGameInstance->UnlockedAbilityTags.Empty();
+		if (AbilitySystemComponent)
+		{
+			FGameplayTagContainer OwnedTags;
+			AbilitySystemComponent->GetOwnedGameplayTags(OwnedTags);
+
+			for (const FGameplayTag& Tag : OwnedTags)
+			{
+				// Filtra apenas tags do tipo "Ability.*.Unlocked"
+				if (Tag.MatchesTag(FGameplayTag::RequestGameplayTag(FName("Ability"))))
+				{
+					SaveGameInstance->UnlockedAbilityTags.Add(Tag.ToString());
+				}
+			}
+		}
+
+		
 		// Save on disk
 		if (UGameplayStatics::SaveGameToSlot(SaveGameInstance, SlotName, 0))
 		{
@@ -271,6 +319,8 @@ void APlayerCharacter::SaveGame(EGameSaveSlots Slot)
 		{
 			UE_LOG(LogTemp, Error, TEXT("Failed to save game!"));
 		}
+
+		
 	}
 }
 
@@ -291,6 +341,7 @@ void APlayerCharacter::LoadGame(EGameSaveSlots Slot)
 
 	if (LoadGameInstance)
 	{
+		InitializeDefaultBasicAttributes();
 		// Load Stats
 		AbilitySystemComponent->SetNumericAttributeBase(
 			UStatsAttributeSet::GetStrengthAttribute(), LoadGameInstance->Strength);
@@ -315,7 +366,16 @@ void APlayerCharacter::LoadGame(EGameSaveSlots Slot)
 		SetActorLocation(LoadGameInstance->PlayerPosition);
 		SetActorRotation(LoadGameInstance->PlayerRotation);
 
-		// Update Basic Attributes based on Stats
+		// Apply unlocked ability tags
+		ApplySavedAbilityTags(LoadGameInstance->UnlockedAbilityTags);
+
+		CheckAndUnlockAbilitiesByLevel(true);
+
+		FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("Event.LoadGame.Finished"));
+		FGameplayEventData EventData;
+		EventData.Instigator = this;
+		EventData.Target = this;
+		AbilitySystemComponent->HandleGameplayEvent(EventTag, &EventData);
 		
 
 		UE_LOG(LogTemp, Log, TEXT("Game loaded successfully!"));
@@ -392,6 +452,13 @@ void APlayerCharacter::AddExperience(int32 Amount)
 		RequiredXP = GetExperienceForNextLevel();
 	}
 
+	FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("Event.GainedExperience"));
+	FGameplayEventData EventData;
+	EventData.EventMagnitude = Amount;
+	EventData.Instigator = this;
+	EventData.Target = this;
+	AbilitySystemComponent->HandleGameplayEvent(EventTag, &EventData);
+	
 	SaveGame(CurrentSaveSlot);
 }
 
@@ -426,3 +493,177 @@ FString APlayerCharacter::GetSlotNameFromEnum(EGameSaveSlots Slot) const
 	}
 }
 
+FGameplayAbilitySpecHandle APlayerCharacter::GrantAbilityAndNotify(int32 Level, TSubclassOf<UGameplayAbility> AbilityClass)
+{
+	if (!AbilitySystemComponent || !AbilityClass)
+	{
+		return FGameplayAbilitySpecHandle();
+	}
+
+	// Concede a ability
+	FGameplayAbilitySpecHandle SpecHandle = AbilitySystemComponent->GiveAbility(
+		FGameplayAbilitySpec(AbilityClass, 1, Level, this)
+	);
+
+	// Armazena o handle
+	if (SpecHandle.IsValid())
+	{
+		AbilitySpecHandles.Add(SpecHandle);
+
+		// Envia evento de gameplay
+		FGameplayEventData EventData;
+		EventData.Instigator = this;
+		EventData.Target = this;
+
+		FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("Event.Abilities.Changed"));
+		AbilitySystemComponent->HandleGameplayEvent(EventTag, &EventData);
+		
+	}
+
+	return SpecHandle;
+}
+
+void APlayerCharacter::OnAttackTagChanged(const FGameplayEventData* Payload)
+{
+	if (!Payload || !Payload->InstigatorTags.IsValid()) return;
+
+	// Procura pela tag de ataque nas InstigatorTags
+	for (const FGameplayTag& Tag : Payload->InstigatorTags)
+	{
+		if (Tag.MatchesTag(FGameplayTag::RequestGameplayTag(FName("Ability.Attack"))))
+		{
+			CurrentAttackTag = Tag;
+			UE_LOG(LogTemp, Log, TEXT("CurrentAttackTag updated to: %s"), 
+				*CurrentAttackTag.ToString());
+			break;
+		}
+	}
+}
+
+void APlayerCharacter::AddUnlockedAbility(int32 Level, FGameplayTag Tag, TSubclassOf<UGameplayAbility> AbilityClass)
+{
+	if (!AbilitySystemComponent || !Tag.IsValid())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Invalid ASC or Tag"));
+		return;
+	}
+
+	// Adiciona a tag ao ASC
+	if (!AbilitySystemComponent->HasMatchingGameplayTag(Tag))
+	{
+		AbilitySystemComponent->AddLooseGameplayTag(Tag);
+		UE_LOG(LogTemp, Log, TEXT("Unlocked ability tag added: %s"), *Tag.ToString());
+	}
+
+
+
+	if (AbilityClass)
+	{
+		const UGameplayAbility* AbilityCDO = AbilityClass->GetDefaultObject<UGameplayAbility>();
+		if (AbilityCDO && AbilityCDO->AbilityTags.HasTag(Tag))
+		{
+			GrantAbilityAndNotify(Level, AbilityClass);
+			UE_LOG(LogTemp, Log, TEXT("Granted ability for tag: %s"), *Tag.ToString());
+		}
+	}
+	
+}
+
+void APlayerCharacter::RemoveUnlockedAbilityTag(FGameplayTag Tag)
+{
+	if (!AbilitySystemComponent || !Tag.IsValid())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Invalid ASC or Tag"));
+		return;
+	}
+
+	// Remove a tag do ASC
+	AbilitySystemComponent->RemoveLooseGameplayTag(Tag);
+
+	UE_LOG(LogTemp, Log, TEXT("Unlocked ability tag removed: %s"), *Tag.ToString());
+
+	// Salva automaticamente
+	SaveGame(CurrentSaveSlot);
+}
+
+bool APlayerCharacter::HasUnlockedAbilityTag(FGameplayTag Tag) const
+{
+    return AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(Tag);
+}
+
+void APlayerCharacter::ApplySavedAbilityTags(const TArray<FString>& SavedTags)
+{
+	if (!AbilitySystemComponent) return;
+
+	for (const FString& TagString : SavedTags)
+	{
+		FGameplayTag Tag = FGameplayTag::RequestGameplayTag(FName(*TagString));
+		if (Tag.IsValid())
+		{
+			AbilitySystemComponent->AddLooseGameplayTag(Tag);
+			UE_LOG(LogTemp, Log, TEXT("Loaded ability tag: %s"), *TagString);
+		}
+	}
+}
+
+void APlayerCharacter::CheckAndUnlockAbilitiesByLevel(bool bIsLoading)
+{
+    if (!AbilitySystemComponent || !StatsAttributeSet) return;
+
+    int32 CurrentLevel = FMath::RoundToInt(StatsAttributeSet->GetLevel());
+
+    // Durante loading, apenas aplica as tags sem disparar eventos
+	if (bIsLoading)
+	{
+		for (const TPair<int32, FAbilityUnlockData>& Pair : LevelUnlockableAbilities)
+		{
+			if (Pair.Key <= CurrentLevel && Pair.Value.AbilityTag.IsValid())
+			{
+				AddUnlockedAbility(Pair.Key, Pair.Value.AbilityTag, Pair.Value.AbilityClass);
+
+				UE_LOG(LogTemp, Log, TEXT("Loaded ability tag for level %d: %s"),
+					Pair.Key, *Pair.Value.AbilityTag.ToString());
+				FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("Event.Abilities.Unlocked"));
+				FGameplayEventData EventData;
+				EventData.EventTag = Pair.Value.AbilityTag;
+				EventData.Instigator = this;
+				EventData.Target = this;
+				AbilitySystemComponent->HandleGameplayEvent(EventTag, &EventData);
+			}
+		}
+		LastProcessedLevel = CurrentLevel;
+		return;
+	}
+
+	// Durante gameplay normal, processa apenas novos níveis
+	for (int32 Level = LastProcessedLevel + 1; Level <= CurrentLevel; ++Level)
+	{
+		if (FAbilityUnlockData* UnlockData = LevelUnlockableAbilities.Find(Level))
+		{
+			if (UnlockData->AbilityTag.IsValid() && 
+				!AbilitySystemComponent->HasMatchingGameplayTag(UnlockData->AbilityTag))
+			{
+				AddUnlockedAbility(Level, UnlockData->AbilityTag, UnlockData->AbilityClass);
+
+
+				UE_LOG(LogTemp, Log, TEXT("Unlocked new ability at level %d: %s"),
+					Level, *UnlockData->AbilityTag.ToString());
+
+				// Dispara o evento
+				FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName("Event.Abilities.Unlocked"));
+				FGameplayEventData EventData;
+				EventData.EventTag = UnlockData->AbilityTag;
+				EventData.Instigator = this;
+				EventData.Target = this;
+				AbilitySystemComponent->HandleGameplayEvent(EventTag, &EventData);
+			}
+		}
+	}
+
+    LastProcessedLevel = CurrentLevel;
+
+	if (!bIsLoading)
+	{
+		SaveGame(CurrentSaveSlot);
+	}
+}

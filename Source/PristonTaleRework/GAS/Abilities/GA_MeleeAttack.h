@@ -88,4 +88,10 @@ public:
 					   bool bReplicateEndAbility,
 					   bool bWasCancelled) override;
 
+	UFUNCTION(BlueprintPure, Category = "Abilities")
+	bool HasAbilityTag(FGameplayTag TagToCheck) const;
+
+	UFUNCTION(BlueprintPure, Category = "Abilities")
+	FGameplayTagContainer GetAbilityTags() const;
+
 };
