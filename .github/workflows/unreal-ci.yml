@@ -75,6 +75,67 @@ jobs:
         Write-Host "✅ Project structure OK"
 
   #Job2: Complete compilation (needs host PC with Unreal Engine installed)
+  build:
+    name: Compile Project
+    needs: validate
+    runs-on: self-hosted  # Requires self-hosted runner with Unreal Engine installed
+    timeout-minutes: 120
+
+    steps:
+    #Step 1: Download Code
+    - name: Download Code
+      uses: actions/checkout@v4
+      with:
+        lfs: true  # Enable Git LFS if using large files
+        submodules: recursive  # Checkout submodules if any
+
+    #Step 2: Download large asstes (Git LFS 
+    - name: Pull LFS Assets
+      run: git lfs pull
+
+    #Step 3: Clean old builds
+    - name: Clean Old Builds
+      run: |
+        Write-Host "Cleaning old builds..."
+        
+        # Remove Build folder
+        if (Test-Path "Build") {
+          Remove-Item -Path "Build" -Recurse -Force
+          Write-Host "✅ Build folder removed"
+        }
+        
+        # Remove Binaries folder
+        if (Test-Path "Binaries") {
+          Remove-Item -Path "Binaries" -Recurse -Force
+          Write-Host "✅ Binaries folder removed"
+        }
+        
+        # Remove Intermediate folder
+        if (Test-Path "Intermediate") {
+          Remove-Item -Path "Intermediate" -Recurse -Force
+          Write-Host "✅ Intermediate folder removed"
+        }
+
+    #Step 4: Compile Unreal Project
+    - name: Compile Unreal Project
+      run: |
+        Write-Host "Starting compilation..."
+        Write-Host "Project: $env:PROJECT_PATH"
+        
+        & "$env:UE_ROOT\Engine\Build\BatchFiles\Build.bat" `
+          PristonTaleReworkEditor `
+          Win64 `
+          Development `
+          -Project="$env:PROJECT_PATH" `
+          -WaitMutex `
+          -FromMsBuild
+        
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error "❌ Compilation failed!"
+          exit 1
+        }
+        
+        Write-Host "✅ Compilation completed!"
 
 
   
