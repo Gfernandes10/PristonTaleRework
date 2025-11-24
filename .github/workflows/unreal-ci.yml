@@ -1,0 +1,80 @@
+name: Unreal Engine CI/CD
+
+# When to execute the workflow
+on:
+  push:
+    branches: [ Stage, master ]  # Quando alguém fizer push
+  pull_request:
+    branches: [ master ]
+
+#Global Variables
+env:
+  UE_VERSION: "5.6"  # Unreal Engine version
+  UE_ROOT: "D:\\UE_5.6"
+  PROJECT_NAME: "PristonTaleRework"
+  PROJECT_PATH: "${{ github.workspace }}\\PristonTaleRework.uproject"
+
+#task lists
+jobs:
+  #Job1: Quick Validation (Could be free runner)
+  validate:
+    name: Validate Code
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+    - name: Download Code
+      uses: actions/checkout@v4
+
+    - name: Verificar Sintaxe C++
+      run: |
+        Write-Host "Verifying C++ files..."
+        
+        # Verify if there are .h/.cpp files
+        $cppFiles = Get-ChildItem -Path "Source" -Include *.cpp,*.h -Recurse
+        
+        if ($cppFiles.Count -eq 0) {
+          Write-Error "No C++ files found!"
+          exit 1
+        }
+        
+        Write-Host "Found $($cppFiles.Count) C++ files"
+        
+        # Check common syntax errors
+        foreach ($file in $cppFiles) {
+          $content = Get-Content $file.FullName -Raw
+          
+          # Example: check if all braces are closed
+          $openBraces = ($content | Select-String -Pattern '\{' -AllMatches).Matches.Count
+          $closeBraces = ($content | Select-String -Pattern '\}' -AllMatches).Matches.Count
+          
+          if ($openBraces -ne $closeBraces) {
+            Write-Warning "Possible syntax error in: $($file.Name)"
+          }
+        }
+        
+        Write-Host "✅ Basic validation completed"
+    
+    - name: Verify Project Structure
+      run: |
+        Write-Host "Verifying structure..."
+        
+        # Verify if essential files exist
+        $requiredFiles = @(
+          "PristonTaleRework.uproject",
+          "Source/PristonTaleRework/PristonTaleRework.Build.cs"
+        )
+        
+        foreach ($file in $requiredFiles) {
+          if (-Not (Test-Path $file)) {
+            Write-Error "Required file not found: $file"
+            exit 1
+          }
+        }
+        
+        Write-Host "✅ Project structure OK"
+
+  #Job2: Complete compilation (needs host PC with Unreal Engine installed)
+
+
+  
