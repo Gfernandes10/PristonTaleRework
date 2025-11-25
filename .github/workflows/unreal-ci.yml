@@ -159,13 +159,32 @@ jobs:
           -NoPause `
           -Unattended `
           -NoSplash `
-          -Log
+          -Log=Log.txt `
+          -Verbose
+
+        Write-Host "`n[LOG] Last 50 lines of log:"
+        Get-Content "Saved\Logs\PristonTaleRework.log" -Tail 50
+
+        if ($LASTEXITCODE -eq -1073741571) {
+          Write-Host "`n[ERROR] Stack overflow detected!"
+          Write-Host "This usually indicates:"
+          Write-Host "  - Infinite recursion in C++ code"
+          Write-Host "  - Blueprint infinite loop"
+          Write-Host "  - GAS callback loop"
+
+          # Procurar por "Stack:" no log
+          Write-Host "`n[CALLSTACK] Searching for crash info:"
+          Get-Content "Saved\Logs\PristonTaleRework.log" | Select-String -Pattern "Stack:|Assertion|Fatal"
+
+          exit 1
+        }
 
         if ($LASTEXITCODE -ne 0) {
-          Write-Host "[WARNING] Tests had warnings (exit code: $LASTEXITCODE)"
-        } else {
-          Write-Host "[OK] Tests passed"
+          Write-Host "[WARNING] Tests failed with exit code: $LASTEXITCODE"
+          exit 1
         }
+
+        Write-Host "[OK] Tests passed"
 
     - name: Upload Test Results
       if: always()
