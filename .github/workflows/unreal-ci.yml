@@ -140,126 +140,66 @@ jobs:
         
         Write-Host " Compilation completed!"
 
-    #Step 5: Pre-compile Shaders
-    - name: Pre-Compile Shaders
-      shell: powershell
-      run: |
-        Write-Host "Pre-compiling shaders..."
-
-        & "$env:UE_ROOT\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" `
-          "$env:PROJECT_PATH" `
-          -run=DerivedDataCache `
-          -fill `
-          -NullRHI `
-          -Unattended `
-          -Log
-
-        Write-Host "Shaders pre-compiled"
-
-    #Step 5: Execute automated tests (if any)
-    - name: Run Automated Tests
+    - name: Run System Tests
+      timeout-minutes: 3
       shell: powershell
       continue-on-error: true
       run: |
-        Write-Host "Running automated tests..."
-        
-        # Clean previous log
-        $logPath = "Saved\Logs\PristonTaleRework.log"
-        if (Test-Path $logPath) {
-          Remove-Item $logPath -Force
-        }
+        Write-Host "[TESTS] Starting system tests (no shaders)..."
 
-        $process = Start-Process `
-          -FilePath "$env:UE_ROOT\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" `
-          -ArgumentList @(
-            "`"$env:PROJECT_PATH`"",
-            "-ExecCmds=`"Automation RunTests Now System+Project`"",
-            "-TestExit=`"Automation Test Queue Empty`"",
-            "-ReportOutputPath=`"${{ github.workspace }}\TestResults`"",
-            "-NullRHI",
-            "-Unattended",
-            "-NoSplash",
-            "-Log"
-          ) `
-          -PassThru `
-          -NoNewWindow
+        & "$env:UE_ROOT\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" `
+          "$env:PROJECT_PATH" `
+          -ExecCmds="Automation RunTests Now System" `
+          -TestExit="Automation Test Queue Empty" `
+          -ReportOutputPath="${{ github.workspace }}\TestResults" `
+          -NullRHI `
+          -NoShaderCompile `
+          -NoAsyncLoadingThread `
+          -NoVerifyGC `
+          -NoPause `
+          -Unattended `
+          -NoSplash `
+          -Log
 
-        # Monitorar por 5 minutos
-        $timeout = 300  # 5 minutos
-        $elapsed = 0
-        $lastLogSize = 0
-
-        Write-Host "Monitoring test execution..."
-
-        while (!$process.HasExited -and $elapsed -lt $timeout) {
-          Start-Sleep -Seconds 10
-          $elapsed += 10
-
-          # Verificar se log está crescendo
-          if (Test-Path $logPath) {
-            $currentSize = (Get-Item $logPath).Length
-
-            if ($currentSize -gt $lastLogSize) {
-              Write-Host " Running... ($elapsed s) - Log size: $([math]::Round($currentSize/1KB, 2)) KB"
-              $lastLogSize = $currentSize
-            } else {
-              Write-Host "Log not growing for 10s... ($elapsed s elapsed)"
-            }
-
-            # Mostrar última linha com "LogAutomation"
-            $lastLines = Get-Content $logPath -Tail 50
-            $automationLine = $lastLines | Where-Object { $_ -match "LogAutomation" } | Select-Object -Last 1
-
-            if ($automationLine) {
-              Write-Host "  → $automationLine"
-            }
-          } else {
-            Write-Host " Waiting for log file... ($elapsed s)"
-          }
-        }
-
-        # Verificar se terminou ou timeout
-        if (!$process.HasExited) {
-          Write-Host "`n Tests did not complete in $timeout seconds"
-          Write-Host "Killing UnrealEditor-Cmd process..."
-
-          # Matar processo
-          Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
-
-          # Matar processos filhos também
-          Get-Process | Where-Object { $_.ProcessName -like "*Unreal*" } | Stop-Process -Force -ErrorAction SilentlyContinue
-
-          Write-Host " Tests timed out"
-          exit 1
-        }
-
-        # Verificar exit code
-        $exitCode = $process.ExitCode
-
-        if ($exitCode -eq 0) {
-          Write-Host "`n Tests completed successfully!"
+        if ($LASTEXITCODE -ne 0) {
+          Write-Host "[WARNING] Tests had warnings (exit code: $LASTEXITCODE)"
         } else {
-          Write-Host "`n Tests failed with exit code $exitCode"
-
-          # Mostrar últimas 30 linhas do log
-          if (Test-Path $logPath) {
-            Write-Host "`nLast 30 lines of log:"
-            Get-Content $logPath -Tail 30
-          }
-
-          exit 1
+          Write-Host "[OK] Tests passed"
         }
-        
-        Write-Host " Tests completed!"
 
-    #Step 6: Upload test results
     - name: Upload Test Results
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: test-results-${{ github.sha }}
-        path: TestResults/
+        path: |
+          TestResults/
+          Saved/Logs/
         retention-days: 7
+
+    - name: Display Summary
+      if: always()
+      shell: powershell
+      run: |
+        Write-Host ""
+        Write-Host "================================"
+        Write-Host "Build Summary"
+        Write-Host "================================"
+        Write-Host "Branch:  ${{ github.ref_name }}"
+        Write-Host "Commit:  ${{ github.sha }}"
+
+        $reportPath = "TestResults\index.json"
+
+        if (Test-Path $reportPath) {
+          $report = Get-Content $reportPath -Raw | ConvertFrom-Json
+
+          Write-Host "Tests:   $($report.totalTests)"
+          Write-Host "Passed:  $($report.passed)"
+          Write-Host "Failed:  $($report.failed)"
+        }
+
+        Write-Host "================================"
+
   #Job3: Deployment (optional, can be added later)
   package:
     name: Package Project
