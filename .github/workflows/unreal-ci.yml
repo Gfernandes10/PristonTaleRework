@@ -53,7 +53,7 @@ jobs:
           }
         }
         
-        Write-Host "✅ Basic validation completed"
+        Write-Host " Basic validation completed"
     
     - name: Verify Project Structure
       run: |
@@ -72,7 +72,7 @@ jobs:
           }
         }
         
-        Write-Host "✅ Project structure OK"
+        Write-Host " Project structure OK"
 
   #Job2: Complete compilation (needs host PC with Unreal Engine installed)
   build:
@@ -103,19 +103,19 @@ jobs:
         # Remove Build folder
         if (Test-Path "Build") {
           Remove-Item -Path "Build" -Recurse -Force
-          Write-Host "✅ Build folder removed"
+          Write-Host " Build folder removed"
         }
         
         # Remove Binaries folder
         if (Test-Path "Binaries") {
           Remove-Item -Path "Binaries" -Recurse -Force
-          Write-Host "✅ Binaries folder removed"
+          Write-Host " Binaries folder removed"
         }
         
         # Remove Intermediate folder
         if (Test-Path "Intermediate") {
           Remove-Item -Path "Intermediate" -Recurse -Force
-          Write-Host "✅ Intermediate folder removed"
+          Write-Host " Intermediate folder removed"
         }
 
     #Step 4: Compile Unreal Project
@@ -134,17 +134,17 @@ jobs:
           -FromMsBuild
         
         if ($LASTEXITCODE -ne 0) {
-          Write-Error "❌ Compilation failed!"
+          Write-Error " Compilation failed!"
           exit 1
         }
         
-        Write-Host "✅ Compilation completed!"
+        Write-Host " Compilation completed!"
 
     #Step 5: Pre-compile Shaders
     - name: Pre-Compile Shaders
       shell: powershell
       run: |
-        Write-Host "🔨 Pre-compiling shaders..."
+        Write-Host "Pre-compiling shaders..."
 
         & "$env:UE_ROOT\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" `
           "$env:PROJECT_PATH" `
@@ -154,7 +154,7 @@ jobs:
           -Unattended `
           -Log
 
-        Write-Host "✅ Shaders pre-compiled"
+        Write-Host "Shaders pre-compiled"
 
     #Step 5: Execute automated tests (if any)
     - name: Run Automated Tests
@@ -200,10 +200,10 @@ jobs:
             $currentSize = (Get-Item $logPath).Length
 
             if ($currentSize -gt $lastLogSize) {
-              Write-Host "⏳ Running... ($elapsed s) - Log size: $([math]::Round($currentSize/1KB, 2)) KB"
+              Write-Host " Running... ($elapsed s) - Log size: $([math]::Round($currentSize/1KB, 2)) KB"
               $lastLogSize = $currentSize
             } else {
-              Write-Host "⚠️ Log not growing for 10s... ($elapsed s elapsed)"
+              Write-Host "Log not growing for 10s... ($elapsed s elapsed)"
             }
 
             # Mostrar última linha com "LogAutomation"
@@ -214,13 +214,13 @@ jobs:
               Write-Host "  → $automationLine"
             }
           } else {
-            Write-Host "⏳ Waiting for log file... ($elapsed s)"
+            Write-Host " Waiting for log file... ($elapsed s)"
           }
         }
 
         # Verificar se terminou ou timeout
         if (!$process.HasExited) {
-          Write-Host "`n⚠️ Tests did not complete in $timeout seconds"
+          Write-Host "`n Tests did not complete in $timeout seconds"
           Write-Host "Killing UnrealEditor-Cmd process..."
 
           # Matar processo
@@ -229,7 +229,7 @@ jobs:
           # Matar processos filhos também
           Get-Process | Where-Object { $_.ProcessName -like "*Unreal*" } | Stop-Process -Force -ErrorAction SilentlyContinue
 
-          Write-Host "❌ Tests timed out"
+          Write-Host " Tests timed out"
           exit 1
         }
 
@@ -237,9 +237,9 @@ jobs:
         $exitCode = $process.ExitCode
 
         if ($exitCode -eq 0) {
-          Write-Host "`n✅ Tests completed successfully!"
+          Write-Host "`n Tests completed successfully!"
         } else {
-          Write-Host "`n❌ Tests failed with exit code $exitCode"
+          Write-Host "`n Tests failed with exit code $exitCode"
 
           # Mostrar últimas 30 linhas do log
           if (Test-Path $logPath) {
@@ -250,7 +250,7 @@ jobs:
           exit 1
         }
         
-        Write-Host "✅ Tests completed!"
+        Write-Host " Tests completed!"
 
     #Step 6: Upload test results
     - name: Upload Test Results
@@ -281,7 +281,7 @@ jobs:
     
     - name: Create Build Shipping
       run: |
-        Write-Host "📦 Creating final build..."
+        Write-Host " Creating final build..."
         
         & "$env:UE_ROOT\Engine\Build\BatchFiles\RunUAT.bat" `
           BuildCookRun `
@@ -299,11 +299,11 @@ jobs:
           -noP4
         
         if ($LASTEXITCODE -ne 0) {
-          Write-Error "❌ Packaging failed!"
+          Write-Error " Packaging failed!"
           exit 1
         }
         
-        Write-Host "✅ Build created successfully!"
+        Write-Host " Build created successfully!"
     
     - name: Upload Final Build
       uses: actions/upload-artifact@v4
