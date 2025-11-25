@@ -154,8 +154,6 @@ jobs:
           -ReportOutputPath="${{ github.workspace }}\TestResults" `
           -NullRHI `
           -NoShaderCompile `
-          -NoAsyncLoadingThread `
-          -NoVerifyGC `
           -NoPause `
           -Unattended `
           -NoSplash `
