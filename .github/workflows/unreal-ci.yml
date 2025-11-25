@@ -140,82 +140,65 @@ jobs:
         
         Write-Host " Compilation completed!"
 
-    # - name: Run System Tests
-    #   timeout-minutes: 3
-    #   shell: powershell
-    #   continue-on-error: true
-    #   run: |
-    #     Write-Host "[TESTS] Starting system tests (no shaders)..."
+    - name: Run System Tests
+      timeout-minutes: 10
+      shell: powershell
+      continue-on-error: true
+      run: |
+        Write-Host "[TESTS] Starting system tests (no shaders)..."
 
-    #     & "$env:UE_ROOT\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" `
-    #       "$env:PROJECT_PATH" `
-    #       -ExecCmds="Automation RunTests Now System" `
-    #       -TestExit="Automation Test Queue Empty" `
-    #       -ReportOutputPath="${{ github.workspace }}\TestResults" `
-    #       -NullRHI `
-    #       -NoShaderCompile `
-    #       -NoPause `
-    #       -Unattended `
-    #       -NoSplash `
-    #       -Log=Log.txt `
-    #       -Verbose
+        & "$env:UE_ROOT\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" `
+          "$env:PROJECT_PATH" `
+          -ExecCmds="Automation RunTests PristonTaleRework" `
+          -TestExit="Automation Test Queue Empty" `
+          -ReportOutputPath="${{ github.workspace }}\TestResults" `
+          -NullRHI `
+          -Unattended `
+          -NoSplash `
+          -NoSound `
+          -Stdout `
+          -AllowStdOutLogVerbosity `
+          -Log="AutomationTest.log"
 
-    #     Write-Host "`n[LOG] Last 50 lines of log:"
-    #     Get-Content "Saved\Logs\PristonTaleRework.log" -Tail 50
+        if ($LASTEXITCODE -ne 0) {
+          Write-Host "[WARNING] Tests failed with exit code: $LASTEXITCODE"
+          exit 1
+        }
 
-    #     if ($LASTEXITCODE -eq -1073741571) {
-    #       Write-Host "`n[ERROR] Stack overflow detected!"
-    #       Write-Host "This usually indicates:"
-    #       Write-Host "  - Infinite recursion in C++ code"
-    #       Write-Host "  - Blueprint infinite loop"
-    #       Write-Host "  - GAS callback loop"
+        Write-Host "[OK] Tests passed"
 
-    #       # Procurar por "Stack:" no log
-    #       Write-Host "`n[CALLSTACK] Searching for crash info:"
-    #       Get-Content "Saved\Logs\PristonTaleRework.log" | Select-String -Pattern "Stack:|Assertion|Fatal"
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results-${{ github.sha }}
+        path: |
+          TestResults/
+          Saved/Logs/
+        retention-days: 7
 
-    #       exit 1
-    #     }
+    - name: Display Summary
+      if: always()
+      shell: powershell
+      run: |
+        Write-Host ""
+        Write-Host "================================"
+        Write-Host "Build Summary"
+        Write-Host "================================"
+        Write-Host "Branch:  ${{ github.ref_name }}"
+        Write-Host "Commit:  ${{ github.sha }}"
 
-    #     if ($LASTEXITCODE -ne 0) {
-    #       Write-Host "[WARNING] Tests failed with exit code: $LASTEXITCODE"
-    #       exit 1
-    #     }
+        $reportPath = "TestResults\index.json"
 
-    #     Write-Host "[OK] Tests passed"
+        if (Test-Path $reportPath) {
+          $report = Get-Content $reportPath -Raw | ConvertFrom-Json
 
-    # - name: Upload Test Results
-    #   if: always()
-    #   uses: actions/upload-artifact@v4
-    #   with:
-    #     name: test-results-${{ github.sha }}
-    #     path: |
-    #       TestResults/
-    #       Saved/Logs/
-    #     retention-days: 7
+          Write-Host "Tests:   $($report.totalTests)"
+          Write-Host "Passed:  $($report.passed)"
+          Write-Host "Failed:  $($report.failed)"
+        }
 
-    # - name: Display Summary
-    #   if: always()
-    #   shell: powershell
-    #   run: |
-    #     Write-Host ""
-    #     Write-Host "================================"
-    #     Write-Host "Build Summary"
-    #     Write-Host "================================"
-    #     Write-Host "Branch:  ${{ github.ref_name }}"
-    #     Write-Host "Commit:  ${{ github.sha }}"
-
-    #     $reportPath = "TestResults\index.json"
-
-    #     if (Test-Path $reportPath) {
-    #       $report = Get-Content $reportPath -Raw | ConvertFrom-Json
-
-    #       Write-Host "Tests:   $($report.totalTests)"
-    #       Write-Host "Passed:  $($report.passed)"
-    #       Write-Host "Failed:  $($report.failed)"
-    #     }
-
-    #     Write-Host "================================"
+        Write-Host "================================"
 
   #Job3: Deployment (optional, can be added later)
   package:
@@ -266,6 +249,6 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: PristonTaleRework-Win64-${{ github.sha }}
-        path: Build/WindowsNoEditor/
+        path: Build/Windows/
         retention-days: 30
         compression-level: 6
