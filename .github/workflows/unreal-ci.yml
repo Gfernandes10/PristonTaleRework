@@ -149,7 +149,7 @@ jobs:
 
         & "$env:UE_ROOT\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" `
           "$env:PROJECT_PATH" `
-          -ExecCmds="Automation RunTests PristonTaleRework" `
+          -ExecCmds="Automation RunTests Project.Functional Tests" `
           -TestExit="Automation Test Queue Empty" `
           -ReportOutputPath="${{ github.workspace }}\TestResults" `
           -NullRHI `

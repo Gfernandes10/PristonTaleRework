@@ -5,6 +5,7 @@
 #include "Net/UnrealNetwork.h"
 #include "GameplayEffectExtension.h"
 #include "AbilitySystemComponent.h"
+#include "PristonTaleRework.h"
 
 UBasicAttributeSet::UBasicAttributeSet()
 {
@@ -149,7 +150,7 @@ void UBasicAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 		}
     
 		float DamageValue = GetIncomingDamage();
-		UE_LOG(LogTemp, Warning, TEXT("IncomingDamage: %.2f"), DamageValue);
+		UE_LOG(LogPristonTaleRework, Log, TEXT("IncomingDamage: %.2f"), DamageValue);
     
 		SetIncomingDamage(0.0f);
     
@@ -161,11 +162,11 @@ void UBasicAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 			if (bDefenseApplied)
 			{
 				FinalDamage = FMath::Max(0.0f, DamageValue - GetDefense());
-				UE_LOG(LogTemp, Warning, TEXT("Defesa Aplicada! Dano Original: %.2f | Dano Após Defesa: %.2f"), DamageValue, FinalDamage);
+				UE_LOG(LogPristonTaleRework, Log, TEXT("Defesa Aplicada! Dano Original: %.2f | Dano Após Defesa: %.2f"), DamageValue, FinalDamage);
 			}
 			else
 			{
-				UE_LOG(LogTemp, Warning, TEXT("Defesa NÃO Aplicada! Dano Final: %.2f"), FinalDamage);
+				UE_LOG(LogPristonTaleRework, Log, TEXT("Defesa NÃO Aplicada! Dano Final: %.2f"), FinalDamage);
 			}
         
 			float NewHealth = GetHealth() - FinalDamage;
@@ -177,7 +178,7 @@ void UBasicAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 				if (ASC)
 				{
 					ASC->AddLooseGameplayTag(DeadTag);
-					UE_LOG(LogTemp, Warning, TEXT("%s morreu!"), *Data.Target.GetAvatarActor()->GetName());
+					UE_LOG(LogPristonTaleRework, Log, TEXT("%s morreu!"), *Data.Target.GetAvatarActor()->GetName());
 				}
 			}
 			else
@@ -186,7 +187,7 @@ void UBasicAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 				if (ASC && ASC->HasMatchingGameplayTag(DeadTag))
 				{
 					ASC->RemoveLooseGameplayTag(DeadTag);
-					UE_LOG(LogTemp, Warning, TEXT("%s reviveu!"), *Data.Target.GetAvatarActor()->GetName());
+					UE_LOG(LogPristonTaleRework, Log, TEXT("%s reviveu!"), *Data.Target.GetAvatarActor()->GetName());
 				}					
 			}
 		}

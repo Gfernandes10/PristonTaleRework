@@ -150,7 +150,7 @@ void UGA_MeleeAttack::ExecuteAttack()
         }
     }
 	
-	OnAttackExecuted(TargetActor.Get());
+	
 	
     // Play attack montage
 	UAnimMontage* ComboMontageToPlay = GetCurrentComboMontage();
@@ -204,7 +204,7 @@ void UGA_MeleeAttack::OnMontageCompleted()
 		&UGA_MeleeAttack::ResetCombo,
 		ComboResetTime,
 		false);
-
+	
 	//UE_LOG(LogTemp, Warning, TEXT("📤 Calling EndAbility from OnMontageCompleted"));
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
 }
@@ -224,7 +224,20 @@ void UGA_MeleeAttack::EndAbility(const FGameplayAbilitySpecHandle Handle,
 								 bool bWasCancelled)
 {
 	//UE_LOG(LogTemp, Warning, TEXT("🛑 EndAbility called (Cancelled: %s)"), bWasCancelled ? TEXT("Yes") : TEXT("No"));
-    
+	OnAttackExecuted(TargetActor.Get());
+
+	// Notifica via gameplay event
+	FGameplayEventData EventData;
+	EventData.Instigator = GetAvatarActorFromActorInfo();
+	EventData.EventTag = FGameplayTag::RequestGameplayTag("Event.Abilities.AttackFinished");
+
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
+		GetAvatarActorFromActorInfo(), 
+		EventData.EventTag, 
+		EventData
+	);
+
+	
 	GetWorld()->GetTimerManager().ClearTimer(MovementCheckTimer);
 	TargetActor.Reset();
 

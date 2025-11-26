@@ -1,0 +1,56 @@
+﻿{
+	"devices": [
+		{
+			"deviceName": "GABRIEL",
+			"instance": "0BBE634648DC720059E002A50D9AD473",
+			"instanceName": "GABRIEL-11112",
+			"platform": "WindowsEditor",
+			"oSVersion": "Windows 11 (25H2) [10.0.26200.7171] ",
+			"model": "Default",
+			"gPU": "NVIDIA GeForce RTX 4060",
+			"cPUModel": "AMD Ryzen 5 5600X 6-Core Processor             ",
+			"rAMInGB": 48,
+			"renderMode": "SM6",
+			"rHI": "",
+			"appInstanceLog": ""
+		}
+	],
+	"reportCreatedOn": "2025.11.26-01.24.51",
+	"succeeded": 1,
+	"succeededWithWarnings": 0,
+	"failed": 0,
+	"notRun": 0,
+	"inProcess": 0,
+	"totalDuration": 2.5692102909088135,
+	"comparisonExported": false,
+	"comparisonExportDirectory": "",
+	"tests": [
+		{
+			"testDisplayName": "FT_CanPlayerMove",
+			"fullTestPath": "Project.Functional Tests.01_PristonRework.LevelDesign.TestingLevel.FT_CanPlayerMove",
+			"state": "Success",
+			"deviceInstance": [
+				"0BBE634648DC720059E002A50D9AD473"
+			],
+			"duration": 2.5692102909088135,
+			"dateTime": "2025.11.26-01.24.48",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "FT_CanPlayerMove: Player moved",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2025.11.26-01.24.51"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		}
+	]
+}

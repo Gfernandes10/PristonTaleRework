@@ -106,8 +106,8 @@ void APlayerCharacter::BeginPlay()
 	// Add Tags if needs Health/Mana Regen
 	if (AbilitySystemComponent && BasicAttributeSet)
 	{
-		static const FGameplayTag NeedsHealthRegenTag = FGameplayTag::RequestGameplayTag(FName("Character.State.Regen.HP"));
-		static const FGameplayTag NeedsManaRegenTag = FGameplayTag::RequestGameplayTag(FName("Character.State.Regen.MP"));
+		static const FGameplayTag NeedsHealthRegenTag = FGameplayTag::RequestGameplayTag(FName("Character.State.Regen.Health"));
+		static const FGameplayTag NeedsManaRegenTag = FGameplayTag::RequestGameplayTag(FName("Character.State.Regen.Mana"));
 
 		if (BasicAttributeSet->GetHealth() < BasicAttributeSet->GetMaxHealth())
 		{
