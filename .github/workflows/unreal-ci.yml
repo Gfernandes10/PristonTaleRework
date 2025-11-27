@@ -220,7 +220,7 @@ jobs:
   package:
     name: Package Build
     needs: build
-    if: github.ref == 'refs/heads/Stage'
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
     runs-on: self-hosted
     timeout-minutes: 180
 
