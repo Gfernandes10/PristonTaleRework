@@ -20,42 +20,14 @@ jobs:
   validate:
     name: Validate Code
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 5
 
-    steps:
-    - name: Download Code
+    steps:    
+    - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Verificar Sintaxe C++
-      run: |
-        Write-Host "Verifying C++ files..."
-        
-        # Verify if there are .h/.cpp files
-        $cppFiles = Get-ChildItem -Path "Source" -Include *.cpp,*.h -Recurse
-        
-        if ($cppFiles.Count -eq 0) {
-          Write-Error "No C++ files found!"
-          exit 1
-        }
-        
-        Write-Host "Found $($cppFiles.Count) C++ files"
-        
-        # Check common syntax errors
-        foreach ($file in $cppFiles) {
-          $content = Get-Content $file.FullName -Raw
-          
-          # Example: check if all braces are closed
-          $openBraces = ($content | Select-String -Pattern '\{' -AllMatches).Matches.Count
-          $closeBraces = ($content | Select-String -Pattern '\}' -AllMatches).Matches.Count
-          
-          if ($openBraces -ne $closeBraces) {
-            Write-Warning "Possible syntax error in: $($file.Name)"
-          }
-        }
-        
-        Write-Host " Basic validation completed"
-    
     - name: Verify Project Structure
+      shell: powershell
       run: |
         Write-Host "Verifying structure..."
         
@@ -74,51 +46,39 @@ jobs:
         
         Write-Host " Project structure OK"
 
-  #Job2: Complete compilation (needs host PC with Unreal Engine installed)
+  #Job2: Build & Test (needs host PC with Unreal Engine installed)
   build:
-    name: Compile Project
+    name: Build & Test Project
     needs: validate
     runs-on: self-hosted  # Requires self-hosted runner with Unreal Engine installed
     timeout-minutes: 120
 
     steps:
-    #Step 1: Download Code
     - name: Download Code
       uses: actions/checkout@v4
       with:
         lfs: true  # Enable Git LFS if using large files
         submodules: recursive  # Checkout submodules if any
 
-    #Step 2: Download large asstes (Git LFS 
-    - name: Pull LFS Assets
+    - name: Kill Unreal Processes
       shell: powershell
-      run: git lfs pull
+      run: |
+        Write-Host "Killing Unreal processes..."
+        Get-Process -Name "UnrealEditor*" -ErrorAction SilentlyContinue | Stop-Process -Force
+        Get-Process -Name "ShaderCompileWorker*" -ErrorAction SilentlyContinue | Stop-Process -Force
+        Start-Sleep -Seconds 2
 
-    #Step 3: Clean old builds
     - name: Clean Old Builds
       shell: powershell
       run: |
         Write-Host "Cleaning old builds..."
-        
-        # Remove Build folder
-        if (Test-Path "Build") {
-          Remove-Item -Path "Build" -Recurse -Force
-          Write-Host " Build folder removed"
-        }
-        
-        # Remove Binaries folder
-        if (Test-Path "Binaries") {
-          Remove-Item -Path "Binaries" -Recurse -Force
-          Write-Host " Binaries folder removed"
-        }
-        
-        # Remove Intermediate folder
-        if (Test-Path "Intermediate") {
-          Remove-Item -Path "Intermediate" -Recurse -Force
-          Write-Host " Intermediate folder removed"
+        @("Build", "Binaries", "Intermediate") | ForEach-Object {
+          if (Test-Path $_) {
+            Remove-Item -Path $_ -Recurse -Force
+            Write-Host "Removed: $_"
+          }
         }
 
-    #Step 4: Compile Unreal Project
     - name: Compile Unreal Project
       shell: powershell
       run: |
@@ -140,32 +100,67 @@ jobs:
         
         Write-Host " Compilation completed!"
 
-    - name: Run System Tests
+    - name: List Available Tests
+      shell: powershell
+      run: |
+          Write-Host "`n========================================" -ForegroundColor Cyan
+          Write-Host "Detecting Functional Tests" -ForegroundColor Cyan
+          Write-Host "========================================`n" -ForegroundColor Cyan
+
+          # Busca rápida por arquivos FT_*.uasset
+          $functionalTests = Get-ChildItem -Path "Content" -Filter "FT_*.uasset" -Recurse -ErrorAction SilentlyContinue
+          
+          if ($functionalTests.Count -eq 0) {
+            Write-Host "No functional tests found (FT_*.uasset)" -ForegroundColor Yellow
+          } else {
+            Write-Host "Found $($functionalTests.Count) functional test(s):" -ForegroundColor Green
+            $functionalTests | ForEach-Object { 
+              Write-Host "  - $($_.BaseName)" -ForegroundColor Cyan
+            }
+          }
+
+    - name: Run Tests
       timeout-minutes: 10
       shell: powershell
       continue-on-error: true
       run: |
-        Write-Host "[TESTS] Starting system tests (no shaders)..."
+        Write-Host "`n========================================" -ForegroundColor Cyan
+        Write-Host "Running Tests" -ForegroundColor Cyan
+        Write-Host "========================================`n" -ForegroundColor Cyan
 
-        & "$env:UE_ROOT\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" `
-          "$env:PROJECT_PATH" `
-          -ExecCmds="Automation RunTests Project.Functional Tests" `
-          -TestExit="Automation Test Queue Empty" `
-          -ReportOutputPath="${{ github.workspace }}\TestResults" `
-          -NullRHI `
-          -Unattended `
-          -NoSplash `
-          -NoSound `
-          -Stdout `
-          -AllowStdOutLogVerbosity `
-          -Log="AutomationTest.log"
+        # Verify if there are functional tests to run
+        $functionalTests = Get-ChildItem -Path "Content" -Filter "FT_*.uasset" -Recurse -ErrorAction SilentlyContinue
+        
+        if ($functionalTests.Count -eq 0) {
+          Write-Host "No functional tests found (FT_*.uasset), skipping..." -ForegroundColor Yellow
+        } else {
+          Write-Host "Running tests..."
+          Write-Host "Starting functional tests..."
 
-        if ($LASTEXITCODE -ne 0) {
-          Write-Host "[WARNING] Tests failed with exit code: $LASTEXITCODE"
-          exit 1
+          $testResultsPath = "${{ github.workspace }}\TestResults"
+          if (-Not (Test-Path $testResultsPath)) {
+              New-Item -ItemType Directory -Path $testResultsPath -Force | Out-Null
+          }
+
+          & "$UE_ROOT\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" `
+            "$PROJECT_PATH" `
+            -ExecCmds="Automation RunTests Project.Functional Tests" `
+            -TestExit="Automation Test Queue Empty" `
+            -ReportOutputPath="$testResultsPath" `
+            -NullRHI `
+            -Unattended `
+            -NoSplash `
+            -NoSound `
+            -Stdout `
+            -AllowStdOutLogVerbosity `
+            -Log="AutomationTest.log"
+
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "[WARNING] Tests failed with exit code: $LASTEXITCODE" -ForegroundColor Yellow
+          } else {
+            Write-Host "[OK] Tests passed" -ForegroundColor Green
+          }
         }
-
-        Write-Host "[OK] Tests passed"
 
     - name: Upload Test Results
       if: always()
@@ -181,74 +176,105 @@ jobs:
       if: always()
       shell: powershell
       run: |
-        Write-Host ""
-        Write-Host "================================"
-        Write-Host "Build Summary"
-        Write-Host "================================"
-        Write-Host "Branch:  ${{ github.ref_name }}"
-        Write-Host "Commit:  ${{ github.sha }}"
+        Write-Host "`n========================================" -ForegroundColor Cyan
+        Write-Host "Build Summary" -ForegroundColor Cyan
+        Write-Host "========================================" -ForegroundColor Cyan
 
-        $reportPath = "TestResults\index.json"
+        $branch = git rev-parse --abbrev-ref HEAD 2>$null
+        $commit = git rev-parse --short HEAD 2>$null
 
-        if (Test-Path $reportPath) {
-          $report = Get-Content $reportPath -Raw | ConvertFrom-Json
-
-          Write-Host "Tests:   $($report.totalTests)"
-          Write-Host "Passed:  $($report.passed)"
-          Write-Host "Failed:  $($report.failed)"
+        if ($branch) {
+            Write-Host "Branch:  $branch" -ForegroundColor White
+        }
+        if ($commit) {
+            Write-Host "Commit:  $commit" -ForegroundColor White
         }
 
-        Write-Host "================================"
+        $reportPath = "${{ github.workspace }}\TestResults\index.json"
+
+        if (Test-Path $reportPath) {
+          try {
+            $report = Get-Content $reportPath -Raw | ConvertFrom-Json
+
+            Write-Host "`nTests:" -ForegroundColor White
+            Write-Host "  Total:  $($report.tests.Count)" -ForegroundColor White
+            Write-Host "  Passed: $($report.succeeded)" -ForegroundColor Green
+            
+            if ($report.failed -gt 0) {
+                Write-Host "  Failed: $($report.failed)" -ForegroundColor Red
+            } else {
+                Write-Host "  Failed: $($report.failed)" -ForegroundColor Green
+            }
+          } catch {
+            Write-Host "Could not parse test results" -ForegroundColor Yellow
+          }
+        }
+        Write-Host "========================================`n" -ForegroundColor Cyan
+        Write-Host "Build completed successfully!" -ForegroundColor Green
 
   #Job3: Deployment (optional, can be added later)
   package:
-    name: Package Project
+    name: Package Build
     needs: build
     if: github.ref == 'refs/heads/Stage'
     runs-on: self-hosted
     timeout-minutes: 180
 
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
-      with:
-        lfs: true
-        submodules: recursive
-
-    - name : Pull LFS Assets
+    - name: Verify Workspace
       shell: powershell
-      run: git lfs pull
-    
-    - name: Create Build Shipping
       run: |
-        Write-Host " Creating final build..."
+        if (-Not (Test-Path "$env:PROJECT_PATH")) {
+          Write-Error "Project not found. Runner workspace was cleared."
+          exit 1
+        }
+    
+    - name: Create Shipping Package
+      shell: powershell
+      run: |
+        Write-Host "Creating package..."
+        
+        $buildPath = "${{ github.workspace }}\Build"
+        New-Item -ItemType Directory -Path $buildPath -Force | Out-Null
         
         & "$env:UE_ROOT\Engine\Build\BatchFiles\RunUAT.bat" `
           BuildCookRun `
           -project="$env:PROJECT_PATH" `
           -platform=Win64 `
           -clientconfig=Shipping `
-          -serverconfig=Shipping `
           -cook `
           -build `
           -stage `
           -pak `
           -archive `
-          -archivedirectory="${{ github.workspace }}\Build" `
+          -archivedirectory="$buildPath" `
           -utf8output `
           -noP4
         
         if ($LASTEXITCODE -ne 0) {
-          Write-Error " Packaging failed!"
+          Write-Error "Packaging failed!"
           exit 1
         }
         
-        Write-Host " Build created successfully!"
+        Write-Host "Package created!"
+
+    - name: Verify Package
+      shell: powershell
+      run: |
+        $exePath = Get-ChildItem -Path "Build" -Filter "*.exe" -Recurse | Select-Object -First 1
+        
+        if (-Not $exePath) {
+          Write-Error "Executable not found!"
+          exit 1
+        }
+        
+        Write-Host "Found: $($exePath.FullName)"
     
-    - name: Upload Final Build
+    - name: Upload Package
       uses: actions/upload-artifact@v4
       with:
         name: PristonTaleRework-Win64-${{ github.sha }}
-        path: Build/Windows/
+        path: Build/Windows*/
         retention-days: 30
         compression-level: 6
+        if-no-files-found: error

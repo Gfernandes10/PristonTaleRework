@@ -52,42 +52,71 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "Compilation completed!" -ForegroundColor Green
 
 # ====================================
-# Step 2: Run System Tests
+# Step 2: Detect Available Tests 
 # ====================================
 if (-Not $SkipTests) {
     Write-Host "`n========================================" -ForegroundColor Cyan
-    Write-Host "Running System Tests" -ForegroundColor Cyan
+    Write-Host "Detecting Functional Tests" -ForegroundColor Cyan
     Write-Host "========================================`n" -ForegroundColor Cyan
 
-    Write-Host "[TESTS] Starting system tests (no shaders)..."
-
-    $testResultsPath = "$WORKSPACE\TestResults"
-    if (-Not (Test-Path $testResultsPath)) {
-        New-Item -ItemType Directory -Path $testResultsPath -Force | Out-Null
-    }
-
-    & "$UE_ROOT\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" `
-      "$PROJECT_PATH" `
-      -ExecCmds="Automation RunTests Project.Functional Tests" `
-      -TestExit="Automation Test Queue Empty" `
-      -ReportOutputPath="$testResultsPath" `
-      -NullRHI `
-      -Unattended `
-      -NoSplash `
-      -NoSound `
-      -Stdout `
-      -AllowStdOutLogVerbosity `
-      -Log="AutomationTest.log"
-
-    if ($LASTEXITCODE -ne 0) {
-      Write-Host "[WARNING] Tests failed with exit code: $LASTEXITCODE" -ForegroundColor Yellow
+    # Busca rápida por arquivos FT_*.uasset
+    $functionalTests = Get-ChildItem -Path "Content" -Filter "FT_*.uasset" -Recurse -ErrorAction SilentlyContinue
+    
+    if ($functionalTests.Count -eq 0) {
+      Write-Host "No functional tests found (FT_*.uasset)" -ForegroundColor Yellow
     } else {
-      Write-Host "[OK] Tests passed" -ForegroundColor Green
+      Write-Host "Found $($functionalTests.Count) functional test(s):" -ForegroundColor Green
+      $functionalTests | ForEach-Object { 
+        Write-Host "  - $($_.BaseName)" -ForegroundColor Cyan
+      }
     }
 }
 
 # ====================================
-# Step 3: Display Summary
+# Step 3: Run Tests
+# ====================================
+if (-Not $SkipTests) {
+    Write-Host "`n========================================" -ForegroundColor Cyan
+    Write-Host "Running Tests" -ForegroundColor Cyan
+    Write-Host "========================================`n" -ForegroundColor Cyan
+
+    # Verify if there are functional tests to run
+    $functionalTests = Get-ChildItem -Path "Content" -Filter "FT_*.uasset" -Recurse -ErrorAction SilentlyContinue
+    
+    if ($functionalTests.Count -eq 0) {
+      Write-Host "No functional tests found (FT_*.uasset), skipping..." -ForegroundColor Yellow
+    } else {
+      Write-Host "Running tests..."
+      Write-Host "Starting functional tests..."
+
+      $testResultsPath = "$WORKSPACE\TestResults"
+      if (-Not (Test-Path $testResultsPath)) {
+          New-Item -ItemType Directory -Path $testResultsPath -Force | Out-Null
+      }
+
+      & "$UE_ROOT\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" `
+        "$PROJECT_PATH" `
+        -ExecCmds="Automation RunTests Project.Functional Tests" `
+        -TestExit="Automation Test Queue Empty" `
+        -ReportOutputPath="$testResultsPath" `
+        -NullRHI `
+        -Unattended `
+        -NoSplash `
+        -NoSound `
+        -Stdout `
+        -AllowStdOutLogVerbosity `
+        -Log="AutomationTest.log"
+
+      if ($LASTEXITCODE -ne 0) {
+        Write-Host "[WARNING] Tests failed with exit code: $LASTEXITCODE" -ForegroundColor Yellow
+      } else {
+        Write-Host "[OK] Tests passed" -ForegroundColor Green
+      }
+    }
+}
+
+# ====================================
+# Step 4: Display Summary
 # ====================================
 Write-Host "`n========================================" -ForegroundColor Cyan
 Write-Host "Build Summary" -ForegroundColor Cyan
@@ -110,8 +139,8 @@ if (Test-Path $reportPath) {
     $report = Get-Content $reportPath -Raw | ConvertFrom-Json
 
     Write-Host "`nTests:" -ForegroundColor White
-    Write-Host "  Total:  $($report.totalTests)" -ForegroundColor White
-    Write-Host "  Passed: $($report.passed)" -ForegroundColor Green
+    Write-Host "  Total:  $($report.tests.Count)" -ForegroundColor White
+    Write-Host "  Passed: $($report.succeeded)" -ForegroundColor Green
     
     if ($report.failed -gt 0) {
         Write-Host "  Failed: $($report.failed)" -ForegroundColor Red

@@ -7,6 +7,7 @@
 #include "AbilitySystemInterface.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemGlobals.h"
+#include "AbilitySystemBlueprintLibrary.h"
 #include "BaseCharacter.generated.h"
 
 UCLASS()
@@ -32,24 +33,31 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AbilitiesSystem")
 	EGameplayEffectReplicationMode AscReplicationMode = EGameplayEffectReplicationMode::Mixed;
 
-	// Default health attribute to apply to the character
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAS|DefaultBasicAttributes")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ExposeOnSpawn = "true"), Category = "GAS|DefaultBasicAttributes")
 	TSubclassOf<class UGameplayEffect> DefaultBasicAttributes;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAS|DefaultBasicAttributes")
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ExposeOnSpawn = "true"), Category = "GAS|DefaultBasicAttributes")
 	float DefaultHealthAttribute = 100.f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAS|DefaultBasicAttributes")
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ExposeOnSpawn = "true"), Category = "GAS|DefaultBasicAttributes")
 	float DefaultMaxHealthAttribute = 100.f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAS|DefaultBasicAttributes")
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ExposeOnSpawn = "true"), Category = "GAS|DefaultBasicAttributes")
 	float DefaultManaAttribute = 100.f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAS|DefaultBasicAttributes")
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ExposeOnSpawn = "true"), Category = "GAS|DefaultBasicAttributes")
 	float DefaultMaxManaAttribute = 100.f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAS|DefaultBasicAttributes")
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ExposeOnSpawn = "true"), Category = "GAS|DefaultBasicAttributes")
 	float DefaultMinPowerAttack = 2.f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAS|DefaultBasicAttributes")
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ExposeOnSpawn = "true"), Category = "GAS|DefaultBasicAttributes")
 	float DefaultMaxPowerAttack = 10.f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAS|DefaultBasicAttributes")
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ExposeOnSpawn = "true"), Category = "GAS|DefaultBasicAttributes")
 	float DefaultDefense = 2.f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAS|DefaultBasicAttributes")
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ExposeOnSpawn = "true"), Category = "GAS|DefaultBasicAttributes")
 	float DefaultDefenseRate = 0.3f;	
 
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Abilities|Basic")
@@ -69,9 +77,11 @@ protected:
 
 	virtual void OnRep_PlayerState() override;
 
-	void InitializeDefaultBasicAttributes();
+
 
 public:		
+	UFUNCTION(BlueprintCallable, Category = "AbilitiesSystem")
+	void InitializeDefaultBasicAttributes();
 	UFUNCTION(BlueprintCallable, Category = "Character State")
 	void ReviveCharacter();
 	// Called every frame

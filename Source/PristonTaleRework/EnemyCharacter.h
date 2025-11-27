@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "BaseCharacter.h"
-#include "PlayerCharacter.h"
+#include "Utils/CombatEventSubsystem.h"
 #include "EnemyCharacter.generated.h"
 
 /**
@@ -12,6 +12,7 @@
  */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAttackFinished);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDeathStateChanged, bool, bIsDead);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnEnemyGivingExp, int32, ExperiencePoints);
 
 
 
@@ -70,6 +71,10 @@ public:
 	FOnDeathStateChanged OnDeathStateChanged;
 
 	
+	UPROPERTY(BlueprintAssignable, Category = "Combat")
+	FOnEnemyGivingExp OnEnemyGivingExp;
+
+	
 	UFUNCTION(BlueprintCallable, Category = "AI|Combat")
 	void StartFollowingPlayer(AActor* Player);
 
@@ -80,11 +85,8 @@ protected:
 	void OnDeathTagChanged(const FGameplayTag Tag, int32 NewCount);
 
 	UFUNCTION(BlueprintCallable, Category = "AI|Combat")
-	void GiveExperienceToPlayer()
+	void BroadcastGivingExp()
 	{
-		if (APlayerCharacter* Player = Cast<APlayerCharacter>(TargetPlayer.Get()))
-		{
-			Player->AddExperience(GivenExperiencePoints);
-		}
+		OnEnemyGivingExp.Broadcast(GivenExperiencePoints);
 	}
 };

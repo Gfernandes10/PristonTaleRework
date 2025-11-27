@@ -2,8 +2,8 @@
 	"devices": [
 		{
 			"deviceName": "GABRIEL",
-			"instance": "0BBE634648DC720059E002A50D9AD473",
-			"instanceName": "GABRIEL-11112",
+			"instance": "B62380034CD32F6DED48D89D5EE5A4DB",
+			"instanceName": "GABRIEL-40080",
 			"platform": "WindowsEditor",
 			"oSVersion": "Windows 11 (25H2) [10.0.26200.7171] ",
 			"model": "Default",
@@ -15,25 +15,52 @@
 			"appInstanceLog": ""
 		}
 	],
-	"reportCreatedOn": "2025.11.26-01.24.51",
-	"succeeded": 1,
+	"reportCreatedOn": "2025.11.27-01.31.12",
+	"succeeded": 3,
 	"succeededWithWarnings": 0,
 	"failed": 0,
 	"notRun": 0,
 	"inProcess": 0,
-	"totalDuration": 2.5692102909088135,
+	"totalDuration": 4.1617999076843262,
 	"comparisonExported": false,
 	"comparisonExportDirectory": "",
 	"tests": [
+		{
+			"testDisplayName": "FT_CanPlayerAttack",
+			"fullTestPath": "Project.Functional Tests.01_PristonRework.LevelDesign.TestingLevel.FT_CanPlayerAttack",
+			"state": "Success",
+			"deviceInstance": [
+				"B62380034CD32F6DED48D89D5EE5A4DB"
+			],
+			"duration": 2.1722009181976318,
+			"dateTime": "2025.11.27-01.31.08",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "FT_CanPlayerAttack: Player Attacked Target",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2025.11.27-01.31.10"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
 		{
 			"testDisplayName": "FT_CanPlayerMove",
 			"fullTestPath": "Project.Functional Tests.01_PristonRework.LevelDesign.TestingLevel.FT_CanPlayerMove",
 			"state": "Success",
 			"deviceInstance": [
-				"0BBE634648DC720059E002A50D9AD473"
+				"B62380034CD32F6DED48D89D5EE5A4DB"
 			],
-			"duration": 2.5692102909088135,
-			"dateTime": "2025.11.26-01.24.48",
+			"duration": 0.72017860412597656,
+			"dateTime": "2025.11.27-01.31.10",
 			"entries": [
 				{
 					"event":
@@ -45,7 +72,34 @@
 					},
 					"filename": "",
 					"lineNumber": -1,
-					"timestamp": "2025.11.26-01.24.51"
+					"timestamp": "2025.11.27-01.31.11"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "FT_CanPlayerReceiveExp",
+			"fullTestPath": "Project.Functional Tests.01_PristonRework.LevelDesign.TestingLevel.FT_CanPlayerReceiveExp",
+			"state": "Success",
+			"deviceInstance": [
+				"B62380034CD32F6DED48D89D5EE5A4DB"
+			],
+			"duration": 1.2694203853607178,
+			"dateTime": "2025.11.27-01.31.11",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "FT_CanPlayerReceiveExp: Player Received Experience!",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2025.11.27-01.31.12"
 				}
 			],
 			"warnings": 0,
