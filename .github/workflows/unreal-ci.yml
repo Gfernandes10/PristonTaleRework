@@ -138,12 +138,16 @@ jobs:
           Write-Host "Starting functional tests..."
 
           $testResultsPath = "${{ github.workspace }}\TestResults"
-          if (-Not (Test-Path $testResultsPath)) {
-              New-Item -ItemType Directory -Path $testResultsPath -Force | Out-Null
+          
+          if (Test-Path $testResultsPath) {
+            Write-Host "Cleaning old test results..." -ForegroundColor Yellow
+            Remove-Item -Path $testResultsPath -Recurse -Force
           }
 
-          & "$UE_ROOT\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" `
-            "$PROJECT_PATH" `
+          New-Item -ItemType Directory -Path $testResultsPath -Force | Out-Null
+
+          & "$env:UE_ROOT\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" `
+            "$env:PROJECT_PATH"  `
             -ExecCmds="Automation RunTests Project.Functional Tests" `
             -TestExit="Automation Test Queue Empty" `
             -ReportOutputPath="$testResultsPath" `
