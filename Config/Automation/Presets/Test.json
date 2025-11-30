@@ -1,0 +1,10 @@
+{
+	"id": "Test",
+	"name": "Test",
+	"enabledTests": [
+		"PristonTaleRework.System.PlayerCharacter.AbilityUnlock",
+		"PristonTaleRework.System.PlayerCharacter.Basic",
+		"PristonTaleRework.System.PlayerCharacter.LevelUp",
+		"PristonTaleRework.System.PlayerCharacter.StatPoints"
+	]
+}

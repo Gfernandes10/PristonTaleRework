@@ -10,6 +10,7 @@
 /**
  * 
  */
+class UCombatEventSubsystem;
 
 USTRUCT(BlueprintType)
 struct FAbilityUnlockData
@@ -177,5 +178,8 @@ private:
 	void ApplySavedAbilityTags(const TArray<FString>& SavedTags);
 
 	int32 LastProcessedLevel = 0;
+
+	UFUNCTION()
+	void OnEnemyDefeatedHandler(AActor* DefeatedEnemy, int32 ExperiencePoints);
 	
 };

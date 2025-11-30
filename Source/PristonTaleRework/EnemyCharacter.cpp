@@ -8,6 +8,7 @@
 #include "Kismet/GameplayStatics.h"
 
 
+
 AEnemyCharacter::AEnemyCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -32,7 +33,7 @@ void AEnemyCharacter::BeginPlay()
 		AbilitySystemComponent->RegisterGameplayTagEvent(AttackActiveTag)
 			.AddUObject(this, &AEnemyCharacter::OnAttackTagChanged);
 
-		FGameplayTag DeadTag = FGameplayTag::RequestGameplayTag("Ability.State.Death");
+		FGameplayTag DeadTag = FGameplayTag::RequestGameplayTag("Character.State.Dead");
 
 		AbilitySystemComponent->RegisterGameplayTagEvent(DeadTag, EGameplayTagEventType::NewOrRemoved)
 			.AddUObject(this, &AEnemyCharacter::OnDeathTagChanged);
@@ -258,7 +259,7 @@ bool AEnemyCharacter::GetPlayerTarget()
 
 void AEnemyCharacter::OnDeathTagChanged(const FGameplayTag Tag, int32 NewCount)
 {
-	bool bIsDead = (NewCount == 0);
+	bool bIsDead = (NewCount > 0);
     
 	// Broadcast para o Blueprint
 	OnDeathStateChanged.Broadcast(bIsDead);
@@ -266,7 +267,14 @@ void AEnemyCharacter::OnDeathTagChanged(const FGameplayTag Tag, int32 NewCount)
 	// Lógica adicional em C++
 	if (bIsDead)
 	{
+		if (UGameInstance* GameInstance = GetGameInstance())
+		{
+			if (UCombatEventSubsystem* CombatEvents = GameInstance->GetSubsystem<UCombatEventSubsystem>())
+			{
+				CombatEvents->BroadcastEnemyDefeated(this, GivenExperiencePoints);
+			}
+		}
+		
 		StopFollowingPlayer();
-		// Outras ações quando morrer
 	}
 }

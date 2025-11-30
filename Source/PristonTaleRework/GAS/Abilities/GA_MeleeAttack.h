@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Abilities/GameplayAbility.h"
+#include "AbilitySystemBlueprintLibrary.h"
 #include "GA_MeleeAttack.generated.h"
 
 /**

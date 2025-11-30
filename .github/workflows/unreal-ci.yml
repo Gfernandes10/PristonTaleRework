@@ -1,0 +1,335 @@
+name: Unreal Engine CI/CD
+
+# When to execute the workflow
+on:
+  push:
+    branches: [ '**' ]  
+  pull_request:
+    branches: [ master ]
+
+#Global Variables
+env:
+  UE_VERSION: "5.6"  # Unreal Engine version
+  UE_ROOT: "D:\\UE_5.6"
+  PROJECT_NAME: "PristonTaleRework"
+  PROJECT_PATH: "${{ github.workspace }}\\PristonTaleRework.uproject"
+
+#task lists
+jobs:
+  #Job1: Quick Validation (Could be free runner)
+  validate:
+    name: Validate Code
+    runs-on: windows-latest
+    timeout-minutes: 5
+
+    steps:    
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Verify Project Structure
+      shell: powershell
+      run: |
+        Write-Host "Verifying structure..."
+        
+        # Verify if essential files exist
+        $requiredFiles = @(
+          "PristonTaleRework.uproject",
+          "Source/PristonTaleRework/PristonTaleRework.Build.cs"
+        )
+        
+        foreach ($file in $requiredFiles) {
+          if (-Not (Test-Path $file)) {
+            Write-Error "Required file not found: $file"
+            exit 1
+          }
+        }
+        
+        Write-Host " Project structure OK"
+
+  #Job2: Build & Test (needs host PC with Unreal Engine installed)
+  build:
+    name: Build & Test Project
+    needs: validate
+    runs-on: self-hosted  # Requires self-hosted runner with Unreal Engine installed
+    timeout-minutes: 120
+
+    steps:
+    - name: Download Code
+      uses: actions/checkout@v4
+      with:
+        lfs: true  # Enable Git LFS if using large files
+        submodules: recursive  # Checkout submodules if any
+
+    - name: Kill Unreal Processes
+      shell: powershell
+      run: |
+        Write-Host "Killing Unreal processes..."
+        Get-Process -Name "UnrealEditor*" -ErrorAction SilentlyContinue | Stop-Process -Force
+        Get-Process -Name "ShaderCompileWorker*" -ErrorAction SilentlyContinue | Stop-Process -Force
+        Start-Sleep -Seconds 2
+
+    - name: Clean Old Builds
+      shell: powershell
+      run: |
+        Write-Host "Cleaning old builds..."
+        @("Build", "Binaries", "Intermediate") | ForEach-Object {
+          if (Test-Path $_) {
+            Remove-Item -Path $_ -Recurse -Force
+            Write-Host "Removed: $_"
+          }
+        }
+
+    - name: Compile Unreal Project
+      shell: powershell
+      run: |
+        Write-Host "Starting compilation..."
+        Write-Host "Project: $env:PROJECT_PATH"
+        
+        & "$env:UE_ROOT\Engine\Build\BatchFiles\Build.bat" `
+          PristonTaleReworkEditor `
+          Win64 `
+          Development `
+          -Project="$env:PROJECT_PATH" `
+          -WaitMutex `
+          -FromMsBuild
+        
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error " Compilation failed!"
+          exit 1
+        }
+        
+        Write-Host " Compilation completed!"
+
+    - name: List Available Tests
+      shell: powershell
+      run: |
+          Write-Host "`n========================================" -ForegroundColor Cyan
+          Write-Host "Detecting Functional Tests" -ForegroundColor Cyan
+          Write-Host "========================================`n" -ForegroundColor Cyan
+
+          # Busca rápida por arquivos FT_*.uasset
+          $functionalTests = Get-ChildItem -Path "Content" -Filter "FT_*.uasset" -Recurse -ErrorAction SilentlyContinue
+          
+          if ($functionalTests.Count -eq 0) {
+            Write-Host "No functional tests found (FT_*.uasset)" -ForegroundColor Yellow
+          } else {
+            Write-Host "Found $($functionalTests.Count) functional test(s):" -ForegroundColor Green
+            $functionalTests | ForEach-Object { 
+              Write-Host "  - $($_.BaseName)" -ForegroundColor Cyan
+            }
+          }
+
+    - name: Run Tests
+      timeout-minutes: 10
+      shell: powershell
+      continue-on-error: true
+      run: |
+        Write-Host "`n========================================" -ForegroundColor Cyan
+        Write-Host "Running Tests" -ForegroundColor Cyan
+        Write-Host "========================================`n" -ForegroundColor Cyan
+
+        # Verify if there are functional tests to run
+        $functionalTests = Get-ChildItem -Path "Content" -Filter "FT_*.uasset" -Recurse -ErrorAction SilentlyContinue
+        
+        if ($functionalTests.Count -eq 0) {
+          Write-Host "No functional tests found (FT_*.uasset), skipping..." -ForegroundColor Yellow
+        } else {
+          Write-Host "Running tests..."
+          Write-Host "Starting functional tests..."
+
+          $testResultsPath = "${{ github.workspace }}\TestResults"
+          
+          if (Test-Path $testResultsPath) {
+            Write-Host "Cleaning old test results..." -ForegroundColor Yellow
+            Remove-Item -Path $testResultsPath -Recurse -Force
+          }
+
+          New-Item -ItemType Directory -Path $testResultsPath -Force | Out-Null
+
+          & "$env:UE_ROOT\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" `
+            "$env:PROJECT_PATH"  `
+            -ExecCmds="Automation RunTests Project.Functional Tests" `
+            -TestExit="Automation Test Queue Empty" `
+            -ReportOutputPath="$testResultsPath" `
+            -NullRHI `
+            -Unattended `
+            -NoSplash `
+            -NoSound `
+            -Stdout `
+            -AllowStdOutLogVerbosity `
+            -Log="AutomationTest.log"
+
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "[WARNING] Tests failed with exit code: $LASTEXITCODE" -ForegroundColor Yellow
+          } else {
+            Write-Host "[OK] Tests passed" -ForegroundColor Green
+          }
+        }
+
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results-${{ github.sha }}
+        path: |
+          TestResults/
+          Saved/Logs/
+        retention-days: 7
+
+    - name: Display Summary
+      if: always()
+      shell: powershell
+      run: |
+        Write-Host "`n========================================" -ForegroundColor Cyan
+        Write-Host "Build Summary" -ForegroundColor Cyan
+        Write-Host "========================================" -ForegroundColor Cyan
+
+        $branch = git rev-parse --abbrev-ref HEAD 2>$null
+        $commit = git rev-parse --short HEAD 2>$null
+
+        if ($branch) {
+            Write-Host "Branch:  $branch" -ForegroundColor White
+        }
+        if ($commit) {
+            Write-Host "Commit:  $commit" -ForegroundColor White
+        }
+
+        $reportPath = "${{ github.workspace }}\TestResults\index.json"
+
+        if (Test-Path $reportPath) {
+          try {
+            $report = Get-Content $reportPath -Raw | ConvertFrom-Json
+
+            Write-Host "`nTests:" -ForegroundColor White
+            Write-Host "  Total:  $($report.tests.Count)" -ForegroundColor White
+            Write-Host "  Passed: $($report.succeeded)" -ForegroundColor Green
+            
+            if ($report.failed -gt 0) {
+                Write-Host "  Failed: $($report.failed)" -ForegroundColor Red
+            } else {
+                Write-Host "  Failed: $($report.failed)" -ForegroundColor Green
+            }
+          } catch {
+            Write-Host "Could not parse test results" -ForegroundColor Yellow
+          }
+        }
+        Write-Host "========================================`n" -ForegroundColor Cyan
+        Write-Host "Build completed successfully!" -ForegroundColor Green
+
+  #Job3: Deployment (optional, can be added later)
+  package:
+    name: Package Build
+    needs: build
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    runs-on: self-hosted
+    timeout-minutes: 180
+
+    steps:
+    - name: Verify Workspace
+      shell: powershell
+      run: |
+        if (-Not (Test-Path "$env:PROJECT_PATH")) {
+          Write-Error "Project not found. Runner workspace was cleared."
+          exit 1
+        }
+    
+    - name: Create Shipping Package
+      shell: powershell
+      run: |
+        Write-Host "Creating package..."
+        
+        $buildPath = "${{ github.workspace }}\Build"
+        New-Item -ItemType Directory -Path $buildPath -Force | Out-Null
+        
+        & "$env:UE_ROOT\Engine\Build\BatchFiles\RunUAT.bat" `
+          BuildCookRun `
+          -project="$env:PROJECT_PATH" `
+          -platform=Win64 `
+          -clientconfig=Shipping `
+          -cook `
+          -build `
+          -stage `
+          -pak `
+          -archive `
+          -archivedirectory="$buildPath" `
+          -utf8output `
+          -noP4
+        
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error "Packaging failed!"
+          exit 1
+        }
+        
+        Write-Host "Package created!"
+
+    - name: Verify Package
+      shell: powershell
+      run: |
+        $exePath = Get-ChildItem -Path "Build" -Filter "*.exe" -Recurse | Select-Object -First 1
+        
+        if (-Not $exePath) {
+          Write-Error "Executable not found!"
+          exit 1
+        }
+        
+        Write-Host "Found: $($exePath.FullName)"
+    
+    - name: Upload Package
+      uses: actions/upload-artifact@v4
+      with:
+        name: PristonTaleRework-Win64-${{ github.sha }}
+        path: Build/Windows*/
+        retention-days: 30
+        compression-level: 6
+        if-no-files-found: error
+
+    - name: Create Release Archive
+      shell: powershell
+      run: |
+        Write-Host "Creating release archive..."
+        
+        $archiveName = "PristonTaleRework-Win64-v1.0.${{ github.run_number }}.zip"
+        $sourcePath = "Build\WindowsNoEditor\*"
+        
+        Compress-Archive -Path $sourcePath -DestinationPath $archiveName -CompressionLevel Optimal
+        
+        if (-Not (Test-Path $archiveName)) {
+          Write-Error "Archive creation failed!"
+          exit 1
+        }
+        
+        $size = [math]::Round((Get-Item $archiveName).Length / 1MB, 2)
+        Write-Host "Archive created: $archiveName ($size MB)"
+        
+        # Exportar nome do arquivo para próximo step
+        echo "ARCHIVE_NAME=$archiveName" >> $env:GITHUB_ENV
+    
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v1.0.${{ github.run_number }}
+        name: Build #${{ github.run_number }}
+        body: |
+          ## 🎮 PristonTale Rework - Build #${{ github.run_number }}
+          
+          **Automated production build from master branch**
+          
+          ### 📋 Build Information
+          - **Commit:** `${{ github.sha }}`
+          - **Date:** ${{ github.event.head_commit.timestamp }}
+          - **Author:** ${{ github.event.head_commit.author.name }}
+          
+          
+          ### 📦 Installation
+          1. Download `PristonTaleRework-Win64-v1.0.${{ github.run_number }}.zip`
+          2. Extract to desired location
+          3. Run `PristonTaleRework.exe`
+          
+          ---
+          **Full changelog:** https://github.com/${{ github.repository }}/compare/${{ github.event.before }}...${{ github.sha }}
+        files: ${{ env.ARCHIVE_NAME }}
+        draft: false
+        prerelease: true  
+        generate_release_notes: true  
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  

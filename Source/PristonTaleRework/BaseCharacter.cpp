@@ -177,7 +177,7 @@ bool ABaseCharacter::ExecuteAttackOnTarget(AActor* TargetActor)
 		static const FGameplayTag DeadTag = FGameplayTag::RequestGameplayTag(FName("Character.State.Dead"));
 		if (TargetASC->HasMatchingGameplayTag(DeadTag))
 		{
-			UE_LOG(LogPristonTaleRework, Warning, TEXT("Target está morto, não atacar: %s"), *TargetActor->GetName());
+			UE_LOG(LogPristonTaleRework, Log, TEXT("Target está morto, não atacar: %s"), *TargetActor->GetName());
 			return false;
 		}
 	}
@@ -188,7 +188,7 @@ bool ABaseCharacter::ExecuteAttackOnTarget(AActor* TargetActor)
 		UE_LOG(LogPristonTaleRework, Log, TEXT("Ataque executado com sucesso! Abilities ativadas: %d"), NumActivated);
 		return true;
 	}
-	UE_LOG(LogPristonTaleRework, Warning, TEXT("Nenhuma ability foi ativada para a tag: %s"), *AbilityTag.ToString());
+	UE_LOG(LogPristonTaleRework, Log, TEXT("Nenhuma ability foi ativada para a tag: %s"), *AbilityTag.ToString());
 	return false;
 }
 

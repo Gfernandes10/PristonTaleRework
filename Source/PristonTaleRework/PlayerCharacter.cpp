@@ -12,6 +12,7 @@
 #include "GAS/AttributesSets/BasicAttributeSet.h"
 #include "Kismet/GameplayStatics.h"
 #include "PlayerSaveGame.h"
+#include "Utils/CombatEventSubsystem.h"
 #include "Tables/ExperienceTableRow.h"
 
 APlayerCharacter::APlayerCharacter()
@@ -79,6 +80,15 @@ void APlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	if (UGameInstance* GameInstance = GetGameInstance())
+	{
+		if (UCombatEventSubsystem* CombatEvents = GameInstance->GetSubsystem<UCombatEventSubsystem>())
+		{
+			CombatEvents->OnEnemyDefeated.AddDynamic(this, &APlayerCharacter::OnEnemyDefeatedHandler);
+			UE_LOG(LogTemp, Log, TEXT("Player inscrito no evento de inimigos derrotados"));
+		}
+	}
+	
 	if (AbilitySystemComponent && StatsAttributeSet)
 	{
 		if (DoesSaveGameExist(CurrentSaveSlot))
@@ -106,8 +116,8 @@ void APlayerCharacter::BeginPlay()
 	// Add Tags if needs Health/Mana Regen
 	if (AbilitySystemComponent && BasicAttributeSet)
 	{
-		static const FGameplayTag NeedsHealthRegenTag = FGameplayTag::RequestGameplayTag(FName("Character.State.Regen.HP"));
-		static const FGameplayTag NeedsManaRegenTag = FGameplayTag::RequestGameplayTag(FName("Character.State.Regen.MP"));
+		static const FGameplayTag NeedsHealthRegenTag = FGameplayTag::RequestGameplayTag(FName("Character.State.Regen.Health"));
+		static const FGameplayTag NeedsManaRegenTag = FGameplayTag::RequestGameplayTag(FName("Character.State.Regen.Mana"));
 
 		if (BasicAttributeSet->GetHealth() < BasicAttributeSet->GetMaxHealth())
 		{
@@ -604,6 +614,13 @@ void APlayerCharacter::ApplySavedAbilityTags(const TArray<FString>& SavedTags)
 			UE_LOG(LogTemp, Log, TEXT("Loaded ability tag: %s"), *TagString);
 		}
 	}
+}
+
+void APlayerCharacter::OnEnemyDefeatedHandler(AActor* DefeatedEnemy, int32 ExperiencePoints)
+{
+	UE_LOG(LogTemp, Log, TEXT("Player received %d XP for defeating %s"), ExperiencePoints, *DefeatedEnemy->GetName());
+	
+	AddExperience(ExperiencePoints);
 }
 
 void APlayerCharacter::CheckAndUnlockAbilitiesByLevel(bool bIsLoading)

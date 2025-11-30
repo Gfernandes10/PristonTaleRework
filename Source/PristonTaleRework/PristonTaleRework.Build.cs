@@ -27,6 +27,11 @@ public class PristonTaleRework : ModuleRules
 			"GameplayAbilities",
 			"GameplayTags",
 			"GameplayTasks" });
+		
+		if (Target.Type == TargetRules.TargetType.Editor)
+		{
+			PrivateDependencyModuleNames.Add("UnrealEd");
+		}
 
 		PublicIncludePaths.AddRange(new string[] {
 			"PristonTaleRework",
