@@ -289,7 +289,19 @@ jobs:
         Write-Host "Creating release archive..."
         
         $archiveName = "PristonTaleRework-Win64-v1.0.${{ github.run_number }}.zip"
-        $sourcePath = "Build\WindowsNoEditor\*"
+        $windowsDir = Get-ChildItem -Path "Build" -Directory | Where-Object { $_.Name -like "Windows*" } | Select-Object -First 1
+        
+        if (-Not $windowsDir) {
+          Write-Error "Windows build directory not found in Build/"
+          Get-ChildItem -Path "Build" -Directory | ForEach-Object { Write-Host "  Found: $($_.Name)" }
+          exit 1
+        }
+
+        Write-Host "Found build directory: $($windowsDir.Name)"
+
+        $sourcePath = Join-Path "Build" $windowsDir.Name | Join-Path -ChildPath "*"
+        
+        Write-Host "Compressing: $sourcePath"
         
         Compress-Archive -Path $sourcePath -DestinationPath $archiveName -CompressionLevel Optimal
         
