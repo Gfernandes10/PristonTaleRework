@@ -223,6 +223,8 @@ jobs:
     if: github.ref == 'refs/heads/master' && github.event_name == 'push'
     runs-on: self-hosted
     timeout-minutes: 180
+    permissions:  
+      contents: write  
 
     steps:
     - name: Verify Workspace
