@@ -3,7 +3,7 @@ name: Unreal Engine CI/CD
 # When to execute the workflow
 on:
   push:
-    branches: [ Stage, master ]  # Quando alguém fizer push
+    branches: [ '**' ]  
   pull_request:
     branches: [ master ]
 
@@ -282,3 +282,54 @@ jobs:
         retention-days: 30
         compression-level: 6
         if-no-files-found: error
+
+    - name: Create Release Archive
+      shell: powershell
+      run: |
+        Write-Host "Creating release archive..."
+        
+        $archiveName = "PristonTaleRework-Win64-v1.0.${{ github.run_number }}.zip"
+        $sourcePath = "Build\WindowsNoEditor\*"
+        
+        Compress-Archive -Path $sourcePath -DestinationPath $archiveName -CompressionLevel Optimal
+        
+        if (-Not (Test-Path $archiveName)) {
+          Write-Error "Archive creation failed!"
+          exit 1
+        }
+        
+        $size = [math]::Round((Get-Item $archiveName).Length / 1MB, 2)
+        Write-Host "Archive created: $archiveName ($size MB)"
+        
+        # Exportar nome do arquivo para próximo step
+        echo "ARCHIVE_NAME=$archiveName" >> $env:GITHUB_ENV
+    
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v1.0.${{ github.run_number }}
+        name: Build #${{ github.run_number }}
+        body: |
+          ## 🎮 PristonTale Rework - Build #${{ github.run_number }}
+          
+          **Automated production build from master branch**
+          
+          ### 📋 Build Information
+          - **Commit:** `${{ github.sha }}`
+          - **Date:** ${{ github.event.head_commit.timestamp }}
+          - **Author:** ${{ github.event.head_commit.author.name }}
+          
+          
+          ### 📦 Installation
+          1. Download `PristonTaleRework-Win64-v1.0.${{ github.run_number }}.zip`
+          2. Extract to desired location
+          3. Run `PristonTaleRework.exe`
+          
+          ---
+          **Full changelog:** https://github.com/${{ github.repository }}/compare/${{ github.event.before }}...${{ github.sha }}
+        files: ${{ env.ARCHIVE_NAME }}
+        draft: false
+        prerelease: true  
+        generate_release_notes: true  
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
